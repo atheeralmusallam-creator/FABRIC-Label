@@ -1,0 +1,56 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  type        String   // text_classification | ner | image_classification | bounding_box | audio_transcription | qa_review | freeform
+  config      Json     // annotation config: labels, options, etc.
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tasks       Task[]
+
+  @@map("projects")
+}
+
+model Task {
+  id          String       @id @default(cuid())
+  projectId   String
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  data        Json         // task content: text, imageUrl, audioUrl, question, etc.
+  status      TaskStatus   @default(PENDING)
+  order       Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  annotations Annotation[]
+
+  @@index([projectId])
+  @@map("tasks")
+}
+
+model Annotation {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  result    Json     // annotation result: varies by project type
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([taskId])
+  @@map("annotations")
+}
+
+enum TaskStatus {
+  PENDING
+  SUBMITTED
+  SKIPPED
+}
