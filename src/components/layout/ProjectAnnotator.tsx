@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { DeleteProjectButton } from "@/components/ui/DeleteProjectButton";
 
-export default function ProjectAnnotator({
+export function ProjectAnnotator({
   project,
   children,
   handleSubmit,
