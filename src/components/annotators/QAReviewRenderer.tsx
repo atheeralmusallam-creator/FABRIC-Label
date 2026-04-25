@@ -40,11 +40,9 @@ export function QAReviewRenderer({ data, config, result, onChange }: Props) {
   const answer = taskData.answer ?? taskData.ai_answer ?? taskData.response ?? taskData.output ?? "";
 
   useEffect(() => {
-    if (result) {
-      setRating(result.rating ?? "");
-      setCorrection(result.correction ?? "");
-    }
-  }, [result]);
+  setRating(result?.rating ?? "");
+  setCorrection(result?.correction ?? "");
+}, [result, taskId]);
 
   const selectRating = (value: string) => {
     setRating(value);
