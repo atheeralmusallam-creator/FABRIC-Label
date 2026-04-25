@@ -1,10 +1,17 @@
-// src/components/ui/DeleteProjectButton.tsx
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export function DeleteProjectButton({ projectId }: { projectId: string }) {
+export function DeleteProjectButton({
+  projectId,
+  organizationId,
+  variant = "button",
+}: {
+  projectId: string;
+  organizationId?: string; // ✅ جديد
+  variant?: "button" | "menu"; // ✅ عشان نستخدمه داخل الثلاث نقاط
+}) {
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const router = useRouter();
@@ -12,9 +19,19 @@ export function DeleteProjectButton({ projectId }: { projectId: string }) {
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      const res = await fetch(`/api/projects/${projectId}`, { method: "DELETE" });
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: "DELETE",
+      });
+
       if (!res.ok) throw new Error();
-      router.push("/dashboard");
+
+      // ✅ يرجع لنفس المنظمة بدل dashboard
+      if (organizationId) {
+        router.push(`/organizations/${organizationId}`);
+      } else {
+        router.push("/dashboard");
+      }
+
       router.refresh();
     } catch {
       alert("Failed to delete project");
@@ -23,10 +40,27 @@ export function DeleteProjectButton({ projectId }: { projectId: string }) {
     }
   };
 
+  // ✅ داخل menu (بدون UI كبير)
+  if (variant === "menu") {
+    return (
+      <button
+        onClick={() => {
+          if (confirm("Delete this project?")) handleDelete();
+        }}
+        className="block w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-red-900/20"
+      >
+        {deleting ? "Deleting..." : "Delete Project"}
+      </button>
+    );
+  }
+
+  // ✅ الشكل القديم (زر عادي)
   if (confirming) {
     return (
       <div className="flex items-center gap-3">
-        <span className="text-xs text-red-400">Are you sure? This cannot be undone.</span>
+        <span className="text-xs text-red-400">
+          Are you sure? This cannot be undone.
+        </span>
         <button
           onClick={handleDelete}
           disabled={deleting}
