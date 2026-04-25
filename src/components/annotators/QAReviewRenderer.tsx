@@ -37,10 +37,20 @@ export function QAReviewRenderer({ data, config, result, onChange }: Props) {
   }, [taskData.options, config.rating_labels]);
 
   const severityLabels = useMemo(() => {
-    return ((config as any).severity_labels ?? []).map((label: any) => ({
+  const configured = (config as any).severity_labels;
+
+  if (Array.isArray(configured) && configured.length > 0) {
+    return configured.map((label: any) => ({
       value: label.value,
     }));
-  }, [config]);
+  }
+
+  return [
+    { value: "Low" },
+    { value: "Medium" },
+    { value: "Critical" },
+  ];
+}, [config]);
 
   const taskId = taskData.id ?? taskData.task_id ?? taskData.external_id ?? "-";
   const risk = taskData.risk_category ?? taskData.risk ?? taskData.domain ?? taskData.category ?? "-";
