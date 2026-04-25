@@ -13,6 +13,7 @@ export async function GET(
         orderBy: { order: "asc" },
         include: {
           annotations: {
+            where: { status: "SUBMITTED" },
             include: { user: true },
           },
         },
@@ -24,17 +25,21 @@ export async function GET(
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
-  // ========= 1. Tasks Sheet =========
   const tasksSheet = project.tasks.map((task, i) => {
     const data: any = task.data;
 
     const row: any = {
       Task: i + 1,
+      ID: data.id || data.task_id || data.external_id || "",
+      Risk: data.risk_category || data.risk || data.domain || data.category || "",
+      Language: data.language || data.lang || data.locale || "",
       Prompt: data.prompt || data.question || data.text || "",
+      Answer: data.answer || data.ai_answer || data.response || data.output || "",
     };
 
     task.annotations.forEach((ann, idx) => {
       const r: any = ann.result || {};
+
       row[`Annotator ${idx + 1}`] = ann.user?.email || "Unknown";
       row[`Rating ${idx + 1}`] = r.rating || "";
       row[`Severity ${idx + 1}`] = r.severity || "";
@@ -44,7 +49,6 @@ export async function GET(
     return row;
   });
 
-  // ========= 2. Agreement =========
   let agreeCount = 0;
   let totalCompared = 0;
 
@@ -54,10 +58,11 @@ export async function GET(
       .filter(Boolean);
 
     if (ratings.length >= 2) {
-      totalCompared++;
+      totalCompared += 1;
       const first = ratings[0];
+
       if (ratings.every((r) => r === first)) {
-        agreeCount++;
+        agreeCount += 1;
       }
     }
   });
@@ -66,10 +71,10 @@ export async function GET(
 
   const agreementSheet = [
     { Metric: "Total Tasks Compared", Value: totalCompared },
+    { Metric: "Agreed Tasks", Value: agreeCount },
     { Metric: "Agreement %", Value: agreement.toFixed(2) },
   ];
 
-  // ========= 3. Annotator Stats =========
   const annotatorStats: Record<string, number> = {};
 
   project.tasks.forEach((task) => {
@@ -79,14 +84,11 @@ export async function GET(
     });
   });
 
-  const annotatorSheet = Object.entries(annotatorStats).map(
-    ([email, count]) => ({
-      Annotator: email,
-      Annotations: count,
-    })
-  );
+  const annotatorSheet = Object.entries(annotatorStats).map(([email, count]) => ({
+    Annotator: email,
+    Annotations: count,
+  }));
 
-  // ========= Excel =========
   const wb = XLSX.utils.book_new();
 
   XLSX.utils.book_append_sheet(
@@ -107,9 +109,13 @@ export async function GET(
     "Annotators"
   );
 
-  const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+  const buffer = XLSX.write(wb, {
+    type: "buffer",
+    bookType: "xlsx",
+  });
 
-  const fileName = `${project.name}_iaa.xlsx`;
+  const safeProjectName = project.name.replace(/[\\/:*?"<>|]/g, "_");
+  const fileName = `${safeProjectName}_iaa.xlsx`;
 
   return new NextResponse(buffer, {
     headers: {
