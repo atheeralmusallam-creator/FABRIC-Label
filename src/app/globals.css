@@ -30,13 +30,32 @@ body {
   color: var(--text-primary);
 }
 
-/* Custom scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg-primary); }
 ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #4a4f65; }
 
-/* NER / span highlight */
+.label-title {
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 6px;
+  color: #e8eaf0;
+}
+
+.task-text {
+  font-size: 14px;
+  line-height: 1.65;
+  color: #d8dbe5;
+  white-space: pre-wrap;
+}
+
+.evaluation-title {
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 10px;
+  color: #e8eaf0;
+}
+
 .ner-text {
   line-height: 2.2;
   font-size: 1rem;
@@ -67,7 +86,6 @@ body {
   opacity: 0.9;
 }
 
-/* Bounding box canvas */
 .bbox-canvas-wrapper {
   position: relative;
   display: inline-block;
@@ -75,12 +93,10 @@ body {
   user-select: none;
 }
 
-/* Task status badges */
 .status-pending   { @apply bg-gray-700/50 text-gray-400 border border-gray-600/50; }
 .status-submitted { @apply bg-green-900/40 text-green-400 border border-green-700/50; }
 .status-skipped   { @apply bg-yellow-900/40 text-yellow-400 border border-yellow-700/50; }
 
-/* Smooth transitions */
 .fade-in {
   animation: fadeIn 0.15s ease-in;
 }
@@ -90,5 +106,4 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Audio waveform */
 #waveform wave { overflow: hidden !important; }
