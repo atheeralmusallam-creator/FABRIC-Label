@@ -10,6 +10,7 @@ import { DeleteProjectButton } from "@/components/ui/DeleteProjectButton";
 import { EditProjectButton } from "@/components/ui/EditProjectButton"; // ✅ جديد
 
 interface ProjectWithTasks extends Project {
+  priority?: string | null;
   assignments?: {
     id: string;
     userId: string;
