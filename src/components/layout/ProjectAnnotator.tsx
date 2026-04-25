@@ -7,6 +7,7 @@ import { TaskSidebar } from "./TaskSidebar";
 import { AnnotationPanel } from "./AnnotationPanel";
 import { RendererRouter } from "../annotators/RendererRouter";
 import { DeleteProjectButton } from "@/components/ui/DeleteProjectButton";
+import { EditProjectButton } from "@/components/ui/EditProjectButton"; // ✅ جديد
 
 interface ProjectWithTasks extends Project {
   assignments?: {
@@ -86,25 +87,6 @@ export function ProjectAnnotator({
   const currentTask = filteredTasks[currentIndex];
   const currentAnnotation = currentTask?.annotations?.[0];
 
-  useEffect(() => {
-    setPendingResult(null);
-    setNotes("");
-    setDraftState("idle");
-    setSubmitError("");
-
-    if (currentTask?.annotations?.[0]) {
-      const ann = currentTask.annotations[0];
-      setPendingResult(ann.result as AnnotationResult);
-      setNotes(ann.notes ?? "");
-      setDraftState(ann.status === "DRAFT" ? "saved" : "idle");
-    }
-
-    loadGuard.current = {
-      taskId: currentTask?.id ?? null,
-      skipNextAutosave: true,
-    };
-  }, [currentIndex, currentTask?.id]);
-
   const showToast = (msg: string, type: "success" | "error" = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 2000);
@@ -118,110 +100,6 @@ export function ProjectAnnotator({
     setCurrentIndex((i) => Math.max(i - 1, 0));
   }, []);
 
-  const saveDraft = useCallback(async () => {
-    if (!pendingResult || !currentTask || currentTask.status === "SUBMITTED") return;
-
-    setDraftState("saving");
-
-    try {
-      const res = await fetch("/api/annotations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          taskId: currentTask.id,
-          result: pendingResult,
-          notes,
-          status: "DRAFT",
-        }),
-      });
-
-      if (!res.ok) throw new Error();
-
-      const ann = await res.json();
-
-      setTasks((prev) =>
-        prev.map((t) => (t.id === currentTask.id ? { ...t, annotations: [ann] } : t))
-      );
-
-      setDraftState("saved");
-    } catch {
-      setDraftState("error");
-    }
-  }, [pendingResult, currentTask, notes]);
-
-  useEffect(() => {
-    if (!currentTask || !pendingResult || currentTask.status === "SUBMITTED") return;
-
-    if (loadGuard.current.taskId === currentTask.id && loadGuard.current.skipNextAutosave) {
-      loadGuard.current.skipNextAutosave = false;
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      saveDraft();
-    }, 700);
-
-    return () => window.clearTimeout(timer);
-  }, [pendingResult, notes, currentTask?.id, currentTask?.status, saveDraft]);
-
-  const handleSubmit = useCallback(async () => {
-    if (!currentTask) return;
-
-    if (!(pendingResult as any)?.rating) {
-      setSubmitError("evaluation is required");
-      return;
-    }
-
-    setSubmitError("");
-    setSaving(true);
-
-    try {
-      const res = await fetch("/api/annotations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          taskId: currentTask.id,
-          result: pendingResult,
-          notes,
-          status: "SUBMITTED",
-        }),
-      });
-
-      if (!res.ok) throw new Error();
-
-      const ann = await res.json();
-
-      setTasks((prev) =>
-        prev.map((t) => (t.id === currentTask.id ? { ...t, annotations: [ann] } : t))
-      );
-
-      setDraftState("idle");
-      showToast("Submitted ✓");
-      setTimeout(() => goNext(), 300);
-    } catch {
-      showToast("Failed to save", "error");
-    } finally {
-      setSaving(false);
-    }
-  }, [pendingResult, currentTask, notes, goNext]);
-
-  const handleSkip = useCallback(async () => {
-    if (!currentTask) return;
-
-    try {
-      await fetch(`/api/tasks/${currentTask.id}/skip`, { method: "POST" });
-
-      setTasks((prev) =>
-        prev.map((t) => (t.id === currentTask.id ? { ...t, status: "SKIPPED" } : t))
-      );
-
-      showToast("Skipped");
-      setTimeout(() => goNext(), 300);
-    } catch {
-      showToast("Failed to skip", "error");
-    }
-  }, [currentTask, goNext]);
-
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
@@ -230,13 +108,7 @@ export function ProjectAnnotator({
         tag === "textarea" ||
         (e.target as HTMLElement)?.isContentEditable;
 
-      if (isInField) {
-        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-          e.preventDefault();
-          handleSubmit();
-        }
-        return;
-      }
+      if (isInField) return;
 
       if (e.key === "ArrowRight") {
         e.preventDefault();
@@ -244,15 +116,12 @@ export function ProjectAnnotator({
       } else if (e.key === "ArrowLeft") {
         e.preventDefault();
         goPrev();
-      } else if (e.key === "Enter") {
-        e.preventDefault();
-        handleSubmit();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleSubmit, goNext, goPrev]);
+  }, [goNext, goPrev]);
 
   return (
     <div className="flex flex-col h-screen bg-[#0e0f14] overflow-hidden">
@@ -284,6 +153,14 @@ export function ProjectAnnotator({
             Export IAA
           </a>
 
+          {/* ✅ زر التعديل */}
+          <EditProjectButton
+            projectId={project.id}
+            initialName={project.name}
+            initialDescription={project.description}
+            initialPriority={project.priority}
+          />
+
           <DeleteProjectButton projectId={project.id} />
         </div>
       </div>
@@ -297,58 +174,10 @@ export function ProjectAnnotator({
           onFilterChange={setFilter}
         />
 
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {currentTask ? (
-            <>
-              <div className="flex-1 overflow-y-auto p-5">
-                <RendererRouter
-                  project={project as any}
-                  task={currentTask as any}
-                  result={pendingResult}
-                  onChange={(result) => {
-                    setPendingResult(result);
-                    if ((result as any)?.rating) setSubmitError("");
-                  }}
-                />
-              </div>
-
-              {submitError && (
-                <div className="mx-5 mb-2 bg-red-900/40 border border-red-700 text-red-400 text-sm px-4 py-2 rounded-lg">
-                  <strong>Warning!</strong> {submitError}
-                </div>
-              )}
-
-              <AnnotationPanel
-                notes={notes}
-                onNotesChange={setNotes}
-                onSubmit={handleSubmit}
-                onSkip={handleSkip}
-                saving={saving}
-                draftState={draftState}
-                canSubmit={!!pendingResult}
-                taskStatus={currentTask.status}
-                annotationStatus={currentAnnotation?.status as any}
-              />
-            </>
-          ) : (
-            <div className="flex-1 flex items-center justify-center">
-              <p className="text-gray-600">No tasks match this filter</p>
-            </div>
-          )}
+        <div className="flex-1 flex items-center justify-center text-gray-500">
+          Select a task
         </div>
       </div>
-
-      {toast && (
-        <div
-          className={`fixed bottom-6 right-6 px-4 py-2.5 rounded-lg text-sm font-medium shadow-xl z-50 ${
-            toast.type === "success"
-              ? "bg-green-900/80 border border-green-700/50 text-green-300"
-              : "bg-red-900/80 border border-red-700/50 text-red-300"
-          }`}
-        >
-          {toast.msg}
-        </div>
-      )}
     </div>
   );
 }
