@@ -116,7 +116,7 @@ export function QAReviewRenderer({ data, config, result, onChange }: Props) {
         <div className="evaluation-title">Evaluation</div>
 
         <div className="flex flex-wrap gap-2">
-          {labels.map((label, index) => {
+          {labels.map((label: any, index: number) => {
             const isSelected = rating === label.value;
             const color = getLabelColor(label.value);
 
