@@ -68,15 +68,17 @@ model ProjectAssignment {
 }
 
 model Project {
-  id             String    @id @default(cuid())
+  id             String        @id @default(cuid())
   organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   name           String
   description    String?
+  priority       String?
   type           String
   config         Json
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
   tasks          Task[]
   assignments    ProjectAssignment[]
 
