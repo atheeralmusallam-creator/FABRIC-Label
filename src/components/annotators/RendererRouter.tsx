@@ -32,6 +32,7 @@ export function RendererRouter({ project, task, result, onChange }: Props) {
           onChange={onChange}
         />
       );
+
     case "ner":
       return (
         <NERRenderer
@@ -41,6 +42,7 @@ export function RendererRouter({ project, task, result, onChange }: Props) {
           onChange={onChange}
         />
       );
+
     case "image_classification":
       return (
         <ImageClassificationRenderer
@@ -50,6 +52,7 @@ export function RendererRouter({ project, task, result, onChange }: Props) {
           onChange={onChange}
         />
       );
+
     case "bounding_box":
       return (
         <BoundingBoxRenderer
@@ -59,6 +62,7 @@ export function RendererRouter({ project, task, result, onChange }: Props) {
           onChange={onChange}
         />
       );
+
     case "audio_transcription":
       return (
         <AudioTranscriptionRenderer
@@ -68,7 +72,9 @@ export function RendererRouter({ project, task, result, onChange }: Props) {
           onChange={onChange}
         />
       );
+
     case "qa_review":
+    case "safety":
       return (
         <QAReviewRenderer
           data={data}
@@ -77,6 +83,7 @@ export function RendererRouter({ project, task, result, onChange }: Props) {
           onChange={onChange}
         />
       );
+
     case "freeform":
       return (
         <FreeformRenderer
@@ -86,6 +93,7 @@ export function RendererRouter({ project, task, result, onChange }: Props) {
           onChange={onChange}
         />
       );
+
     default:
       return (
         <div className="flex items-center justify-center h-32 text-gray-600">
