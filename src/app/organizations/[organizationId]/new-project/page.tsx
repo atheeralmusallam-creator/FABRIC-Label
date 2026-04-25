@@ -67,19 +67,19 @@ const DEFAULT_CONFIGS: Record<ProjectType, object> = {
     instructions: "Rate the AI-generated answer.",
   },
   safety: {
-  rating_labels: [
-    { value: "Safe", hotkey: "1" },
-    { value: "Not Safe", hotkey: "2" },
-    { value: "tool_call", hotkey: "3" },
-  ],
-  severity_labels: [
-    { value: "Low" },
-    { value: "Medium" },
-    { value: "Critical" },
-  ],
-  require_correction: false,
-  instructions: "Review the answer for safety.",
-},
+    rating_labels: [
+      { value: "Safe", hotkey: "1" },
+      { value: "Not Safe", hotkey: "2" },
+      { value: "tool_call", hotkey: "3" },
+    ],
+    severity_labels: [
+      { value: "Low" },
+      { value: "Medium" },
+      { value: "Critical" },
+    ],
+    require_correction: false,
+    instructions: "Review the answer for safety.",
+  },
   freeform: {
     instructions: "Review the content and write your notes.",
     min_length: 0,
@@ -87,10 +87,16 @@ const DEFAULT_CONFIGS: Record<ProjectType, object> = {
   },
 };
 
-export default function NewProjectPage({ params }: { params: { organizationId: string } }) {
+export default function NewProjectPage({
+  params,
+}: {
+  params: { organizationId: string };
+}) {
   const router = useRouter();
+
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [priority, setPriority] = useState("");
   const [type, setType] = useState<ProjectType>("safety");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -111,12 +117,15 @@ export default function NewProjectPage({ params }: { params: { organizationId: s
         body: JSON.stringify({
           name,
           description,
+          priority: priority || null,
           type,
           config: DEFAULT_CONFIGS[type],
           organizationId: params.organizationId,
         }),
       });
+
       if (!res.ok) throw new Error("Failed to create project");
+
       const project = await res.json();
       router.push(`/projects/${project.id}/import`);
     } catch {
@@ -129,7 +138,12 @@ export default function NewProjectPage({ params }: { params: { organizationId: s
     <div className="min-h-screen bg-[#0e0f14]">
       <header className="border-b border-[#2a2d3e] bg-[#13151e] px-6 py-4">
         <div className="max-w-3xl mx-auto flex items-center gap-3">
-          <Link href={`/organizations/${params.organizationId}`} className="text-gray-500 hover:text-white transition-colors text-sm">← Organization</Link>
+          <Link
+            href={`/organizations/${params.organizationId}`}
+            className="text-gray-500 hover:text-white transition-colors text-sm"
+          >
+            ← Organization
+          </Link>
           <span className="text-gray-700">/</span>
           <span className="text-sm text-white">New Project</span>
         </div>
@@ -140,18 +154,22 @@ export default function NewProjectPage({ params }: { params: { organizationId: s
 
         <div className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Project Name *</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Project Name *
+            </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Safety"
+              placeholder="e.g. [EN - Safety] allam34b..."
               className="w-full bg-[#13151e] border border-[#2a2d3e] focus:border-indigo-500 rounded-lg px-4 py-2.5 text-white text-sm outline-none transition-colors"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Description
+            </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -162,7 +180,25 @@ export default function NewProjectPage({ params }: { params: { organizationId: s
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-3">Annotation Type *</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Priority <span className="text-gray-600">(optional)</span>
+            </label>
+            <select
+              value={priority}
+              onChange={(e) => setPriority(e.target.value)}
+              className="w-full bg-[#13151e] border border-[#2a2d3e] focus:border-indigo-500 rounded-lg px-4 py-2.5 text-white text-sm outline-none transition-colors"
+            >
+              <option value="">No priority</option>
+              <option value="High">High</option>
+              <option value="Medium">Medium</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-3">
+              Annotation Type *
+            </label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {PROJECT_TYPES.map((t) => (
                 <button
@@ -182,13 +218,27 @@ export default function NewProjectPage({ params }: { params: { organizationId: s
             </div>
           </div>
 
-          {error && <div className="bg-red-900/30 border border-red-700/50 text-red-400 text-sm px-4 py-3 rounded-lg">{error}</div>}
+          {error && (
+            <div className="bg-red-900/30 border border-red-700/50 text-red-400 text-sm px-4 py-3 rounded-lg">
+              {error}
+            </div>
+          )}
 
           <div className="flex gap-3">
-            <button onClick={handleSubmit} disabled={loading} className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium px-6 py-2.5 rounded-lg transition-colors">
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium px-6 py-2.5 rounded-lg transition-colors"
+            >
               {loading ? "Creating..." : "Create Project"}
             </button>
-            <Link href={`/organizations/${params.organizationId}`} className="bg-[#1a1d27] hover:bg-[#21253a] text-gray-300 text-sm font-medium px-6 py-2.5 rounded-lg transition-colors">Cancel</Link>
+
+            <Link
+              href={`/organizations/${params.organizationId}`}
+              className="bg-[#1a1d27] hover:bg-[#21253a] text-gray-300 text-sm font-medium px-6 py-2.5 rounded-lg transition-colors"
+            >
+              Cancel
+            </Link>
           </div>
         </div>
       </main>
