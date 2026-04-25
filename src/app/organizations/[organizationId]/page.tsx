@@ -6,7 +6,6 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { UserMenu } from "@/components/auth/UserMenu";
 import { OrganizationProjectsClient } from "@/components/organizations/OrganizationProjectsClient";
-import { DeleteOrganizationButton } from "@/components/ui/DeleteOrganizationButton";
 
 async function getOrganization(organizationId: string, user: { id: string; role: string }) {
   const org = await prisma.organization.findUnique({
@@ -89,12 +88,6 @@ export default async function OrganizationPage({
           </nav>
         </div>
       </header>
-
-      {canManage && (
-        <div className="max-w-7xl mx-auto px-6 pt-6 flex justify-end">
-          <DeleteOrganizationButton organizationId={org.id} />
-        </div>
-      )}
 
       <OrganizationProjectsClient
         organization={{
