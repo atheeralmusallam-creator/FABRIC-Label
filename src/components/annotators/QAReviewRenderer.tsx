@@ -57,7 +57,7 @@ export function QAReviewRenderer({ data, config, result, onChange }: Props) {
   };
 
   const getLabelColor = (value: string) =>
-    labels.find((l) => l.value === value)?.color ?? "#6366f1";
+    labels.find((l: any) => l.value === value)?.color ?? "#6366f1";
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
