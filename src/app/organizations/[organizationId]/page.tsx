@@ -31,6 +31,7 @@ async function getOrganization(organizationId: string, user: { id: string; role:
       id: p.id,
       name: p.name,
       description: p.description,
+      priority: p.priority,
       type: p.type,
       stats: {
         total,
