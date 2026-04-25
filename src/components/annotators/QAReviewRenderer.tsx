@@ -38,11 +38,12 @@ export function QAReviewRenderer({ data, config, result, onChange }: Props) {
   const language = taskData.language ?? taskData.lang ?? taskData.locale ?? "-";
   const prompt = taskData.prompt ?? taskData.question ?? taskData.input ?? taskData.text ?? "";
   const answer = taskData.answer ?? taskData.ai_answer ?? taskData.response ?? taskData.output ?? "";
+  const coAnnotators: string[] = Array.isArray(taskData.annotators) ? taskData.annotators.filter(Boolean) : [];
 
   useEffect(() => {
-  setRating(result?.rating ?? "");
-  setCorrection(result?.correction ?? "");
-}, [result, taskId]);
+    setRating(result?.rating ?? "");
+    setCorrection(result?.correction ?? "");
+  }, [result, taskId]);
 
   const selectRating = (value: string) => {
     setRating(value);
@@ -91,6 +92,9 @@ export function QAReviewRenderer({ data, config, result, onChange }: Props) {
           <span><span className="text-gray-500">ID:</span> {taskId}</span>
           <span><span className="text-gray-500">Risk:</span> {risk}</span>
           <span><span className="text-gray-500">Language:</span> {language}</span>
+          {coAnnotators.length > 0 && (
+            <span><span className="text-gray-500">Annotators:</span> {coAnnotators.join(", ")}</span>
+          )}
         </div>
 
         {taskData.context && (

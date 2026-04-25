@@ -136,7 +136,10 @@ export async function POST(request: NextRequest, { params }: { params: { project
     const replaceExisting = form.get("replaceExisting") === "true";
     if (!(file instanceof File)) return NextResponse.json({ error: "file is required" }, { status: 400 });
 
-    const project = await prisma.project.findUnique({ where: { id: params.projectId } });
+    const project = await prisma.project.findUnique({
+      where: { id: params.projectId },
+      include: { assignments: { select: { userId: true }, orderBy: { createdAt: "asc" } } },
+    });
     if (!project) return NextResponse.json({ error: "Project not found" }, { status: 404 });
 
     const rows = await parseFile(file);
@@ -175,6 +178,27 @@ export async function POST(request: NextRequest, { params }: { params: { project
     const existingCount = replaceExisting ? 0 : await prisma.task.count({ where: { projectId: params.projectId } });
     await prisma.task.createMany({ data: tasks.map((task, i) => ({ ...task, order: existingCount + i })) });
 
+    const createdTasks = await prisma.task.findMany({
+      where: {
+        projectId: params.projectId,
+        order: { gte: existingCount, lt: existingCount + tasks.length },
+      },
+      orderBy: { order: "asc" },
+      select: { id: true },
+    });
+
+    const annotatorIds = project.assignments.map((a) => a.userId);
+    if (annotatorIds.length > 0 && createdTasks.length > 0) {
+      const taskAssignments = createdTasks.flatMap((task, taskIndex) => {
+        const count = Math.min(3, annotatorIds.length);
+        return Array.from({ length: count }, (_, offset) => ({
+          taskId: task.id,
+          userId: annotatorIds[(taskIndex + offset) % annotatorIds.length],
+        }));
+      });
+      await prisma.taskAssignment.createMany({ data: taskAssignments, skipDuplicates: true });
+    }
+
     const shouldUpdateAsSafety = safety && project.type !== "safety";
     const shouldSetOptions = firstOptions.length > 0;
     if (shouldUpdateAsSafety || shouldSetOptions) {
@@ -191,7 +215,7 @@ export async function POST(request: NextRequest, { params }: { params: { project
       });
     }
 
-    return NextResponse.json({ imported: tasks.length, detectedType: safety ? "safety" : project.type, detectedOptions: firstOptions });
+    return NextResponse.json({ imported: tasks.length, detectedType: safety ? "safety" : project.type, detectedOptions: firstOptions, assignedAnnotatorsPerTask: Math.min(3, project.assignments.length) });
   } catch (error: any) {
     console.error("POST import error:", error);
     return NextResponse.json({ error: error?.message || "Failed to import tasks" }, { status: 500 });

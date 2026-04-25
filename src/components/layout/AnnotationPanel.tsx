@@ -9,8 +9,10 @@ interface Props {
   onSubmit: () => void;
   onSkip: () => void;
   saving: boolean;
+  draftState: "idle" | "saving" | "saved" | "error";
   canSubmit: boolean;
   taskStatus: TaskStatus;
+  annotationStatus?: "DRAFT" | "SUBMITTED";
 }
 
 export function AnnotationPanel({
@@ -19,12 +21,13 @@ export function AnnotationPanel({
   onSubmit,
   onSkip,
   saving,
+  draftState,
   canSubmit,
   taskStatus,
+  annotationStatus,
 }: Props) {
   return (
     <div className="flex-shrink-0 border-t border-[#2a2d3e] bg-[#13151e] px-5 py-4">
-      {/* Notes */}
       <div className="mb-3">
         <label className="block text-xs text-gray-600 mb-1.5">
           Notes / Comments
@@ -38,7 +41,6 @@ export function AnnotationPanel({
               e.preventDefault();
               if (canSubmit) onSubmit();
             }
-            // Plain Enter adds newline (default textarea behavior, no action needed)
           }}
           placeholder="Optional notes about this annotation..."
           rows={2}
@@ -46,7 +48,6 @@ export function AnnotationPanel({
         />
       </div>
 
-      {/* Actions */}
       <div className="flex items-center justify-between">
         <button
           onClick={onSkip}
@@ -56,7 +57,10 @@ export function AnnotationPanel({
         </button>
 
         <div className="flex items-center gap-3">
-          {taskStatus === "SUBMITTED" && (
+          {draftState === "saving" && <span className="text-xs text-blue-400">Saving draft...</span>}
+          {draftState === "saved" && annotationStatus !== "SUBMITTED" && <span className="text-xs text-blue-400">Draft saved</span>}
+          {draftState === "error" && <span className="text-xs text-red-400">Draft failed</span>}
+          {(annotationStatus === "SUBMITTED" || taskStatus === "SUBMITTED") && (
             <span className="text-xs text-green-500">✓ Submitted</span>
           )}
           <button
@@ -64,7 +68,7 @@ export function AnnotationPanel({
             disabled={saving || !canSubmit}
             className="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors"
           >
-            {saving ? "Saving..." : taskStatus === "SUBMITTED" ? "Update" : "Submit"}
+            {saving ? "Saving..." : (annotationStatus === "SUBMITTED" || taskStatus === "SUBMITTED") ? "Update" : "Submit"}
             <span className="ml-2 text-indigo-300 text-xs hidden sm:inline">↵</span>
           </button>
         </div>

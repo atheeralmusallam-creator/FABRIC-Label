@@ -1,7 +1,7 @@
 // src/components/layout/ProjectAnnotator.tsx
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { Task, Project, Annotation, AnnotationResult } from "@/types";
 import { getProjectTypeLabel, getProjectTypeIcon } from "@/lib/utils";
@@ -10,30 +10,38 @@ import { AnnotationPanel } from "./AnnotationPanel";
 import { RendererRouter } from "../annotators/RendererRouter";
 
 interface ProjectWithTasks extends Project {
+  assignments?: { id: string; userId: string; user?: { id: string; name?: string | null; email: string } }[];
   tasks: (Task & { annotations: Annotation[] })[];
 }
 
-export function ProjectAnnotator({ project }: { project: ProjectWithTasks }) {
+export function ProjectAnnotator({ project }: { project: ProjectWithTasks; currentUserId?: string }) {
   const [tasks, setTasks] = useState(project.tasks);
   const [currentIndex, setCurrentIndex] = useState(() => {
-    const firstPending = project.tasks.findIndex((t) => t.status === "PENDING");
+    const firstPending = project.tasks.findIndex((t) => t.status !== "SKIPPED" && t.annotations?.[0]?.status !== "SUBMITTED");
     return firstPending >= 0 ? firstPending : 0;
   });
   const [pendingResult, setPendingResult] = useState<AnnotationResult | null>(null);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [draftState, setDraftState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [filter, setFilter] = useState("");
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
+  const loadGuard = useRef<{ taskId: string | null; skipNextAutosave: boolean }>({ taskId: null, skipNextAutosave: false });
 
   const currentTask = tasks[currentIndex];
+  const currentAnnotation = currentTask?.annotations?.[0];
 
   useEffect(() => {
     setPendingResult(null);
     setNotes("");
+    setDraftState("idle");
     if (currentTask?.annotations?.[0]) {
       const ann = currentTask.annotations[0];
       setPendingResult(ann.result as AnnotationResult);
       setNotes(ann.notes ?? "");
+      setDraftState(ann.status === "DRAFT" ? "saved" : "idle");
     }
+    loadGuard.current = { taskId: currentTask?.id ?? null, skipNextAutosave: true };
   }, [currentIndex, currentTask?.id]);
 
   const showToast = (msg: string, type: "success" | "error" = "success") => {
@@ -49,6 +57,45 @@ export function ProjectAnnotator({ project }: { project: ProjectWithTasks }) {
     setCurrentIndex((i) => Math.max(i - 1, 0));
   }, []);
 
+  const saveDraft = useCallback(async () => {
+    if (!pendingResult || !currentTask || currentTask.status === "SUBMITTED") return;
+    setDraftState("saving");
+    try {
+      const res = await fetch("/api/annotations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskId: currentTask.id, result: pendingResult, notes, status: "DRAFT" }),
+      });
+      if (!res.ok) throw new Error();
+      const ann = await res.json();
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === currentTask.id
+            ? { ...t, annotations: [ann] }
+            : t
+        )
+      );
+      setDraftState("saved");
+    } catch {
+      setDraftState("error");
+    }
+  }, [pendingResult, currentTask, notes]);
+
+  useEffect(() => {
+    if (!currentTask || !pendingResult || currentTask.status === "SUBMITTED") return;
+
+    if (loadGuard.current.taskId === currentTask.id && loadGuard.current.skipNextAutosave) {
+      loadGuard.current.skipNextAutosave = false;
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      saveDraft();
+    }, 700);
+
+    return () => window.clearTimeout(timer);
+  }, [pendingResult, notes, currentTask?.id, currentTask?.status, saveDraft]);
+
   const handleSubmit = useCallback(async () => {
     if (!pendingResult || !currentTask) return;
     setSaving(true);
@@ -56,7 +103,7 @@ export function ProjectAnnotator({ project }: { project: ProjectWithTasks }) {
       const res = await fetch("/api/annotations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ taskId: currentTask.id, result: pendingResult, notes }),
+        body: JSON.stringify({ taskId: currentTask.id, result: pendingResult, notes, status: "SUBMITTED" }),
       });
       if (!res.ok) throw new Error();
       const ann = await res.json();
@@ -64,11 +111,12 @@ export function ProjectAnnotator({ project }: { project: ProjectWithTasks }) {
       setTasks((prev) =>
         prev.map((t) =>
           t.id === currentTask.id
-            ? { ...t, status: "SUBMITTED", annotations: [ann] }
+            ? { ...t, annotations: [ann] }
             : t
         )
       );
-      showToast("Saved ✓");
+      setDraftState("idle");
+      showToast("Submitted ✓");
       setTimeout(() => goNext(), 300);
     } catch {
       showToast("Failed to save", "error");
@@ -115,7 +163,7 @@ export function ProjectAnnotator({ project }: { project: ProjectWithTasks }) {
 
   const stats = {
     total: tasks.length,
-    submitted: tasks.filter((t) => t.status === "SUBMITTED").length,
+    submitted: tasks.filter((t) => t.annotations?.[0]?.status === "SUBMITTED" || t.status === "SUBMITTED").length,
     skipped: tasks.filter((t) => t.status === "SKIPPED").length,
   };
   const progress = stats.total > 0 ? Math.round(((stats.submitted + stats.skipped) / stats.total) * 100) : 0;
@@ -135,20 +183,8 @@ export function ProjectAnnotator({ project }: { project: ProjectWithTasks }) {
           <span className="hidden sm:inline text-xs px-2 py-0.5 rounded-full bg-[#1a1d27] text-gray-500 border border-[#2a2d3e]">
             {getProjectTypeLabel(project.type as any)}
           </span>
-          <Link
-            href={`/projects/${project.id}/settings`}
-            className="hidden sm:inline text-xs text-gray-600 hover:text-gray-400 transition-colors"
-            title="Settings"
-          >
-            ⚙️
-          </Link>
-          <Link
-            href={`/projects/${project.id}/import`}
-            className="hidden sm:inline text-xs text-gray-600 hover:text-gray-400 transition-colors"
-            title="Import tasks"
-          >
-            ⬆️ Import
-          </Link>
+          <Link href={`/projects/${project.id}/settings`} className="hidden sm:inline text-xs text-gray-600 hover:text-gray-400 transition-colors" title="Settings">⚙️</Link>
+          <Link href={`/projects/${project.id}/import`} className="hidden sm:inline text-xs text-gray-600 hover:text-gray-400 transition-colors" title="Import tasks">⬆️ Import</Link>
         </div>
 
         <div className="flex items-center gap-4 flex-shrink-0">
@@ -167,31 +203,17 @@ export function ProjectAnnotator({ project }: { project: ProjectWithTasks }) {
             {" "}<kbd className="bg-[#1a1d27] border border-[#2a2d3e] px-1.5 py-0.5 rounded text-gray-500">Enter</kbd>
           </div>
           <div className="relative group hidden sm:block">
-            <button className="text-xs px-3 py-1.5 rounded-lg bg-[#1a1d27] border border-[#2a2d3e] text-gray-500 hover:text-white transition-colors">
-              Export ↓
-            </button>
+            <button className="text-xs px-3 py-1.5 rounded-lg bg-[#1a1d27] border border-[#2a2d3e] text-gray-500 hover:text-white transition-colors">Export ↓</button>
             <div className="absolute right-0 top-full mt-1 w-36 bg-[#1a1d27] border border-[#2a2d3e] rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity z-50">
-              <a
-                href={`/api/projects/${project.id}/export?format=json`}
-                download
-                className="block px-4 py-2 text-xs text-gray-400 hover:text-white hover:bg-[#21253a] rounded-t-lg transition-colors"
-              >
-                📄 JSON
-              </a>
-              <a
-                href={`/api/projects/${project.id}/export?format=csv`}
-                download
-                className="block px-4 py-2 text-xs text-gray-400 hover:text-white hover:bg-[#21253a] rounded-b-lg transition-colors"
-              >
-                📊 CSV
-              </a>
+              <a href={`/api/projects/${project.id}/export?format=json`} download className="block px-4 py-2 text-xs text-gray-400 hover:text-white hover:bg-[#21253a] rounded-t-lg transition-colors">📄 JSON</a>
+              <a href={`/api/projects/${project.id}/export?format=csv`} download className="block px-4 py-2 text-xs text-gray-400 hover:text-white hover:bg-[#21253a] rounded-b-lg transition-colors">📊 CSV</a>
             </div>
           </div>
         </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        <TaskSidebar tasks={tasks} currentIndex={currentIndex} onSelect={setCurrentIndex} />
+        <TaskSidebar tasks={tasks} currentIndex={currentIndex} onSelect={setCurrentIndex} filter={filter} onFilterChange={setFilter} />
 
         <div className="flex-1 flex flex-col overflow-hidden">
           {currentTask ? (
@@ -200,38 +222,22 @@ export function ProjectAnnotator({ project }: { project: ProjectWithTasks }) {
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-gray-500">Task {currentIndex + 1} of {tasks.length}</span>
                   <span className={`text-xs px-2 py-0.5 rounded-full ${
-                    currentTask.status === "SUBMITTED" ? "status-submitted" :
+                    currentAnnotation?.status === "SUBMITTED" || currentTask.status === "SUBMITTED" ? "status-submitted" :
                     currentTask.status === "SKIPPED"   ? "status-skipped" :
+                    currentAnnotation?.status === "DRAFT" ? "bg-blue-900/40 text-blue-400 border border-blue-700/50" :
                     "status-pending"
                   }`}>
-                    {currentTask.status.toLowerCase()}
+                    {currentAnnotation?.status === "SUBMITTED" ? "submitted" : currentTask.status === "PENDING" && currentAnnotation?.status === "DRAFT" ? "draft" : currentTask.status.toLowerCase()}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={goPrev}
-                    disabled={currentIndex === 0}
-                    className="text-xs px-3 py-1.5 rounded-lg bg-[#1a1d27] border border-[#2a2d3e] text-gray-400 hover:text-white disabled:opacity-30 transition-colors"
-                  >
-                    ← Prev
-                  </button>
-                  <button
-                    onClick={goNext}
-                    disabled={currentIndex === tasks.length - 1}
-                    className="text-xs px-3 py-1.5 rounded-lg bg-[#1a1d27] border border-[#2a2d3e] text-gray-400 hover:text-white disabled:opacity-30 transition-colors"
-                  >
-                    Next →
-                  </button>
+                  <button onClick={goPrev} disabled={currentIndex === 0} className="text-xs px-3 py-1.5 rounded-lg bg-[#1a1d27] border border-[#2a2d3e] text-gray-400 hover:text-white disabled:opacity-30 transition-colors">← Prev</button>
+                  <button onClick={goNext} disabled={currentIndex === tasks.length - 1} className="text-xs px-3 py-1.5 rounded-lg bg-[#1a1d27] border border-[#2a2d3e] text-gray-400 hover:text-white disabled:opacity-30 transition-colors">Next →</button>
                 </div>
               </div>
 
               <div className="flex-1 overflow-y-auto p-5">
-                <RendererRouter
-                  project={project as any}
-                  task={currentTask as any}
-                  result={pendingResult}
-                  onChange={setPendingResult}
-                />
+                <RendererRouter project={project as any} task={currentTask as any} result={pendingResult} onChange={setPendingResult} />
               </div>
 
               <AnnotationPanel
@@ -240,8 +246,10 @@ export function ProjectAnnotator({ project }: { project: ProjectWithTasks }) {
                 onSubmit={handleSubmit}
                 onSkip={handleSkip}
                 saving={saving}
+                draftState={draftState}
                 canSubmit={!!pendingResult}
                 taskStatus={currentTask.status}
+                annotationStatus={currentAnnotation?.status as any}
               />
             </>
           ) : (

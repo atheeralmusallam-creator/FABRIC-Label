@@ -20,7 +20,14 @@ interface Props {
 export function RendererRouter({ project, task, result, onChange }: Props) {
   const type = project.type as ProjectType;
   const config = project.config as any;
-  const data = task.data as any;
+  const taskAny = task as any;
+  const taskAnnotators = Array.isArray(taskAny.assignments) && taskAny.assignments.length > 0
+    ? taskAny.assignments.map((a: any) => a.user?.name || a.user?.email).filter(Boolean)
+    : Array.isArray((project as any).assignments)
+      ? (project as any).assignments.map((a: any) => a.user?.name || a.user?.email).filter(Boolean)
+      : [];
+
+  const data = { ...(task.data as any), annotators: taskAnnotators };
 
   switch (type) {
     case "text_classification":

@@ -11,6 +11,7 @@ export type ProjectType =
   | "freeform";
 
 export type TaskStatus = "PENDING" | "SUBMITTED" | "SKIPPED";
+export type AnnotationStatus = "DRAFT" | "SUBMITTED";
 
 export interface LabelConfig {
   value: string;
@@ -195,15 +196,27 @@ export interface Task {
   createdAt: string;
   updatedAt: string;
   annotations?: Annotation[];
+  assignments?: TaskAssignment[];
 }
 
 export interface Annotation {
   id: string;
   taskId: string;
+  userId?: string | null;
   result: AnnotationResult;
   notes?: string | null;
+  status?: AnnotationStatus;
   createdAt: string;
   updatedAt: string;
+  user?: { id: string; name?: string | null; email: string };
+}
+
+export interface TaskAssignment {
+  id: string;
+  taskId: string;
+  userId: string;
+  createdAt: string;
+  user?: { id: string; name?: string | null; email: string };
 }
 
 export interface ProjectWithStats extends Project {
