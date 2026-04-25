@@ -11,6 +11,7 @@ type ProjectCard = {
   id: string;
   name: string;
   description?: string | null;
+  priority?: string | null;
   type: string;
   stats: {
     total: number;
@@ -200,9 +201,15 @@ export function OrganizationProjectsClient({ organization, projects, canManage }
               </div>
 
               {project.description && (
-                <p className="text-gray-500 text-xs mb-4 line-clamp-2">
+                <p className="text-gray-500 text-xs mb-3 line-clamp-2">
                   {project.description}
                 </p>
+              )}
+
+              {project.priority && (
+                <div className="text-xs text-emerald-400 mb-4">
+                  Priority: {project.priority}
+                </div>
               )}
 
               <div className="space-y-2">
