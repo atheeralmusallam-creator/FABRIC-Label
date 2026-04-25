@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import Link from "next/link";
 import { Task, Project, Annotation, AnnotationResult } from "@/types";
 import { TaskSidebar } from "./TaskSidebar";
@@ -24,6 +24,36 @@ export function ProjectAnnotator({
   currentUserId?: string;
 }) {
   const [tasks, setTasks] = useState(project.tasks);
+  const [filter, setFilter] = useState("");
+
+  const filteredTasks = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    if (!q) return tasks;
+
+    return tasks.filter((task) => {
+      const data = task.data as any;
+      const haystack = [
+        data?.id,
+        data?.prompt,
+        data?.question,
+        data?.answer,
+        data?.response,
+        data?.text,
+        data?.risk,
+        data?.risk_category,
+        data?.language,
+        data?.lang,
+        task.status,
+        ...(task.annotations || []).map((a: any) => a.user?.name || a.user?.email || ""),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(q);
+    });
+  }, [tasks, filter]);
+
   const [currentIndex, setCurrentIndex] = useState(() => {
     const firstPending = project.tasks.findIndex(
       (t) => t.status !== "SKIPPED" && t.annotations?.[0]?.status !== "SUBMITTED"
@@ -31,11 +61,20 @@ export function ProjectAnnotator({
     return firstPending >= 0 ? firstPending : 0;
   });
 
+  useEffect(() => {
+    setCurrentIndex(0);
+  }, [filter]);
+
+  useEffect(() => {
+    if (currentIndex > filteredTasks.length - 1) {
+      setCurrentIndex(Math.max(filteredTasks.length - 1, 0));
+    }
+  }, [currentIndex, filteredTasks.length]);
+
   const [pendingResult, setPendingResult] = useState<AnnotationResult | null>(null);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [draftState, setDraftState] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  const [filter, setFilter] = useState("");
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
   const [submitError, setSubmitError] = useState("");
 
@@ -44,7 +83,7 @@ export function ProjectAnnotator({
     skipNextAutosave: false,
   });
 
-  const currentTask = tasks[currentIndex];
+  const currentTask = filteredTasks[currentIndex];
   const currentAnnotation = currentTask?.annotations?.[0];
 
   useEffect(() => {
@@ -72,8 +111,8 @@ export function ProjectAnnotator({
   };
 
   const goNext = useCallback(() => {
-    setCurrentIndex((i) => Math.min(i + 1, tasks.length - 1));
-  }, [tasks.length]);
+    setCurrentIndex((i) => Math.min(i + 1, filteredTasks.length - 1));
+  }, [filteredTasks.length]);
 
   const goPrev = useCallback(() => {
     setCurrentIndex((i) => Math.max(i - 1, 0));
@@ -251,7 +290,7 @@ export function ProjectAnnotator({
 
       <div className="flex flex-1 overflow-hidden">
         <TaskSidebar
-          tasks={tasks}
+          tasks={filteredTasks}
           currentIndex={currentIndex}
           onSelect={setCurrentIndex}
           filter={filter}
@@ -293,7 +332,7 @@ export function ProjectAnnotator({
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center">
-              <p className="text-gray-600">No tasks in this project</p>
+              <p className="text-gray-600">No tasks match this filter</p>
             </div>
           )}
         </div>
