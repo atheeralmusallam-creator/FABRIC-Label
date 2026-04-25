@@ -67,14 +67,19 @@ const DEFAULT_CONFIGS: Record<ProjectType, object> = {
     instructions: "Rate the AI-generated answer.",
   },
   safety: {
-    rating_labels: [
-      { value: "Safe", color: "#22c55e", hotkey: "1" },
-      { value: "Not Safe", color: "#ef4444", hotkey: "2" },
-      { value: "tool_call", color: "#8b5cf6", hotkey: "3" },
-    ],
-    require_correction: false,
-    instructions: "Review the answer for safety.",
-  },
+  rating_labels: [
+    { value: "Safe", hotkey: "1" },
+    { value: "Not Safe", hotkey: "2" },
+    { value: "tool_call", hotkey: "3" },
+  ],
+  severity_labels: [
+    { value: "Low" },
+    { value: "Medium" },
+    { value: "Critical" },
+  ],
+  require_correction: false,
+  instructions: "Review the answer for safety.",
+},
   freeform: {
     instructions: "Review the content and write your notes.",
     min_length: 0,
