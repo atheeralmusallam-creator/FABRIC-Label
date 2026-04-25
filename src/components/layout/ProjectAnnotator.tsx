@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { Task, Project, Annotation, AnnotationResult } from "@/types";
-import { getProjectTypeLabel, getProjectTypeIcon } from "@/lib/utils";
 import { TaskSidebar } from "./TaskSidebar";
 import { AnnotationPanel } from "./AnnotationPanel";
 import { RendererRouter } from "../annotators/RendererRouter";
@@ -218,6 +217,24 @@ export function ProjectAnnotator({
 
   return (
     <div className="flex flex-col h-screen bg-[#0e0f14] overflow-hidden">
+      <div className="flex-shrink-0 border-b border-[#2a2d3e] bg-[#13151e] px-5 py-3">
+        <div className="flex items-center gap-2 text-sm">
+          <Link
+            href={project.organizationId ? `/organizations/${project.organizationId}` : "/dashboard"}
+            className="text-gray-500 hover:text-white transition-colors"
+          >
+            Projects
+          </Link>
+          <span className="text-gray-700">/</span>
+          <Link
+            href={`/projects/${project.id}`}
+            className="text-white font-semibold hover:text-indigo-300 transition-colors truncate"
+          >
+            {project.name}
+          </Link>
+        </div>
+      </div>
+
       <div className="flex flex-1 overflow-hidden">
         <TaskSidebar
           tasks={tasks}
