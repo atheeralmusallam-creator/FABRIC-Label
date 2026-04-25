@@ -180,18 +180,6 @@ export default function NewProjectPage() {
             </div>
           </div>
 
-          {type === "safety" && (
-            <div className="bg-[#13151e] border border-[#2a2d3e] rounded-xl px-4 py-3 text-sm text-gray-300">
-              <div className="font-semibold text-white mb-2">Safety Evaluation</div>
-              <div className="text-gray-400">
-                Default evaluation options:
-                <span className="text-green-400 ml-2">1. Safe</span>
-                <span className="text-red-400 ml-3">2. Not Safe</span>
-                <span className="text-purple-400 ml-3">3. tool_call</span>
-              </div>
-            </div>
-          )}
-
           {error && (
             <div className="bg-red-900/30 border border-red-700/50 text-red-400 text-sm px-4 py-3 rounded-lg">
               {error}
