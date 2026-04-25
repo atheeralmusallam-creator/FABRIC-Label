@@ -1,7 +1,7 @@
 // src/components/layout/ProjectAnnotator.tsx
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Task, Project, Annotation, AnnotationResult } from "@/types";
 import { getProjectTypeLabel, getProjectTypeIcon } from "@/lib/utils";
@@ -23,15 +23,12 @@ export function ProjectAnnotator({ project }: { project: ProjectWithTasks }) {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
-  const isTypingRef = useRef(false);
 
   const currentTask = tasks[currentIndex];
 
-  // Reset form when task changes
   useEffect(() => {
     setPendingResult(null);
     setNotes("");
-    // Load existing annotation if any
     if (currentTask?.annotations?.[0]) {
       const ann = currentTask.annotations[0];
       setPendingResult(ann.result as AnnotationResult);
@@ -64,7 +61,6 @@ export function ProjectAnnotator({ project }: { project: ProjectWithTasks }) {
       if (!res.ok) throw new Error();
       const ann = await res.json();
 
-      // Update local tasks state
       setTasks((prev) =>
         prev.map((t) =>
           t.id === currentTask.id
@@ -95,14 +91,12 @@ export function ProjectAnnotator({ project }: { project: ProjectWithTasks }) {
     }
   }, [currentTask, goNext]);
 
-  // ─── Keyboard shortcuts ──────────────────────────────────────────────────
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
       const isInField = tag === "input" || tag === "textarea" || (e.target as HTMLElement)?.isContentEditable;
 
       if (isInField) {
-        // Only Ctrl+Enter submits from within fields
         if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
           e.preventDefault();
           handleSubmit();
@@ -110,7 +104,6 @@ export function ProjectAnnotator({ project }: { project: ProjectWithTasks }) {
         return;
       }
 
-      // Global shortcuts (not in fields)
       if (e.key === "ArrowRight") { e.preventDefault(); goNext(); }
       else if (e.key === "ArrowLeft") { e.preventDefault(); goPrev(); }
       else if (e.key === "Enter") { e.preventDefault(); handleSubmit(); }
@@ -129,7 +122,6 @@ export function ProjectAnnotator({ project }: { project: ProjectWithTasks }) {
 
   return (
     <div className="flex flex-col h-screen bg-[#0e0f14] overflow-hidden">
-      {/* ── Top Bar ── */}
       <header className="flex-shrink-0 flex items-center justify-between px-4 py-3 bg-[#13151e] border-b border-[#2a2d3e] z-10">
         <div className="flex items-center gap-3 min-w-0">
           <Link href="/dashboard" className="text-gray-500 hover:text-white transition-colors flex-shrink-0">
@@ -150,9 +142,15 @@ export function ProjectAnnotator({ project }: { project: ProjectWithTasks }) {
           >
             ⚙️
           </Link>
+          <Link
+            href={`/projects/${project.id}/import`}
+            className="hidden sm:inline text-xs text-gray-600 hover:text-gray-400 transition-colors"
+            title="Import tasks"
+          >
+            ⬆️ Import
+          </Link>
         </div>
 
-        {/* Progress */}
         <div className="flex items-center gap-4 flex-shrink-0">
           <div className="hidden sm:flex items-center gap-2 text-xs text-gray-500">
             <span className="text-green-500 font-medium">{stats.submitted}</span>
@@ -168,7 +166,6 @@ export function ProjectAnnotator({ project }: { project: ProjectWithTasks }) {
             {" "}<kbd className="bg-[#1a1d27] border border-[#2a2d3e] px-1.5 py-0.5 rounded text-gray-500">→</kbd>
             {" "}<kbd className="bg-[#1a1d27] border border-[#2a2d3e] px-1.5 py-0.5 rounded text-gray-500">Enter</kbd>
           </div>
-          {/* Export dropdown */}
           <div className="relative group hidden sm:block">
             <button className="text-xs px-3 py-1.5 rounded-lg bg-[#1a1d27] border border-[#2a2d3e] text-gray-500 hover:text-white transition-colors">
               Export ↓
@@ -193,20 +190,12 @@ export function ProjectAnnotator({ project }: { project: ProjectWithTasks }) {
         </div>
       </header>
 
-      {/* ── Main Layout ── */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <TaskSidebar
-          tasks={tasks}
-          currentIndex={currentIndex}
-          onSelect={setCurrentIndex}
-        />
+        <TaskSidebar tasks={tasks} currentIndex={currentIndex} onSelect={setCurrentIndex} />
 
-        {/* Center: Annotation area */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {currentTask ? (
             <>
-              {/* Task header */}
               <div className="flex-shrink-0 flex items-center justify-between px-5 py-3 border-b border-[#2a2d3e] bg-[#13151e]">
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-gray-500">Task {currentIndex + 1} of {tasks.length}</span>
@@ -236,7 +225,6 @@ export function ProjectAnnotator({ project }: { project: ProjectWithTasks }) {
                 </div>
               </div>
 
-              {/* Annotation renderer */}
               <div className="flex-1 overflow-y-auto p-5">
                 <RendererRouter
                   project={project as any}
@@ -246,7 +234,6 @@ export function ProjectAnnotator({ project }: { project: ProjectWithTasks }) {
                 />
               </div>
 
-              {/* Notes + Actions */}
               <AnnotationPanel
                 notes={notes}
                 onNotesChange={setNotes}
@@ -265,7 +252,6 @@ export function ProjectAnnotator({ project }: { project: ProjectWithTasks }) {
         </div>
       </div>
 
-      {/* Toast */}
       {toast && (
         <div className={`fixed bottom-6 right-6 px-4 py-2.5 rounded-lg text-sm font-medium shadow-xl z-50 fade-in ${
           toast.type === "success"

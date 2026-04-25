@@ -1,7 +1,7 @@
 // src/components/annotators/QAReviewRenderer.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { QAReviewConfig, QAReviewResult, QATaskData } from "@/types";
 
 interface Props {
@@ -11,18 +11,33 @@ interface Props {
   onChange: (r: QAReviewResult) => void;
 }
 
+const FALLBACK_COLORS = ["#22c55e", "#ef4444", "#8b5cf6", "#f59e0b", "#3b82f6", "#14b8a6", "#e879f9", "#94a3b8", "#f97316"];
+
 export function QAReviewRenderer({ data, config, result, onChange }: Props) {
   const taskData = data as any;
-
   const [rating, setRating] = useState(result?.rating ?? "");
   const [correction, setCorrection] = useState(result?.correction ?? "");
 
-  const taskId = taskData.id ?? taskData.task_id ?? taskData.external_id ?? "-";
-  const risk = taskData.risk_category ?? taskData.risk ?? "-";
-  const language = taskData.language ?? taskData.lang ?? "-";
+  const labels = useMemo(() => {
+    const taskOptions = Array.isArray(taskData.options) ? taskData.options.filter(Boolean) : [];
+    if (taskOptions.length) {
+      return taskOptions.map((value: string, index: number) => ({
+        value,
+        color: config.rating_labels?.[index]?.color ?? FALLBACK_COLORS[index % FALLBACK_COLORS.length],
+        hotkey: String(index + 1),
+      }));
+    }
+    return (config.rating_labels ?? []).map((label, index) => ({
+      ...label,
+      hotkey: label.hotkey ?? String(index + 1),
+    }));
+  }, [taskData.options, config.rating_labels]);
 
-  const prompt = taskData.prompt ?? taskData.question ?? "";
-  const answer = taskData.answer ?? taskData.ai_answer ?? "";
+  const taskId = taskData.id ?? taskData.task_id ?? taskData.external_id ?? "-";
+  const risk = taskData.risk_category ?? taskData.risk ?? taskData.domain ?? taskData.category ?? "-";
+  const language = taskData.language ?? taskData.lang ?? taskData.locale ?? "-";
+  const prompt = taskData.prompt ?? taskData.question ?? taskData.input ?? taskData.text ?? "";
+  const answer = taskData.answer ?? taskData.ai_answer ?? taskData.response ?? taskData.output ?? "";
 
   useEffect(() => {
     if (result) {
@@ -42,7 +57,7 @@ export function QAReviewRenderer({ data, config, result, onChange }: Props) {
   };
 
   const getLabelColor = (value: string) =>
-    config.rating_labels.find((l) => l.value === value)?.color ?? "#6366f1";
+    labels.find((l) => l.value === value)?.color ?? "#6366f1";
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -55,15 +70,15 @@ export function QAReviewRenderer({ data, config, result, onChange }: Props) {
       if (isInField) return;
 
       const number = Number(e.key);
-      if (!Number.isNaN(number) && number >= 1 && number <= config.rating_labels.length) {
+      if (!Number.isNaN(number) && number >= 1 && number <= labels.length) {
         e.preventDefault();
-        selectRating(config.rating_labels[number - 1].value);
+        selectRating(labels[number - 1].value);
       }
     };
 
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [config.rating_labels, correction]);
+  }, [labels, correction]);
 
   return (
     <div className="max-w-3xl mx-auto space-y-5 fade-in">
@@ -74,11 +89,17 @@ export function QAReviewRenderer({ data, config, result, onChange }: Props) {
       )}
 
       <div className="bg-[#13151e] border border-[#2a2d3e] rounded-xl p-5 space-y-5">
-        <div className="flex flex-wrap gap-x-8 gap-y-2 text-xs text-gray-400 border-b border-[#2a2d3e] pb-3">
+        <div className="sticky top-0 z-10 flex flex-wrap gap-x-8 gap-y-2 text-xs text-gray-400 border-b border-[#2a2d3e] bg-[#13151e] pb-3">
           <span><span className="text-gray-500">ID:</span> {taskId}</span>
           <span><span className="text-gray-500">Risk:</span> {risk}</span>
           <span><span className="text-gray-500">Language:</span> {language}</span>
         </div>
+
+        {taskData.context && (
+          <div className="text-xs text-gray-600">
+            Context: <span className="text-gray-500">{taskData.context}</span>
+          </div>
+        )}
 
         <div>
           <div className="label-title">Prompt</div>
@@ -95,7 +116,7 @@ export function QAReviewRenderer({ data, config, result, onChange }: Props) {
         <div className="evaluation-title">Evaluation</div>
 
         <div className="flex flex-wrap gap-2">
-          {config.rating_labels.map((label, index) => {
+          {labels.map((label, index) => {
             const isSelected = rating === label.value;
             const color = getLabelColor(label.value);
 

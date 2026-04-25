@@ -8,15 +8,50 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  ADMIN
+  MANAGER
+  ANNOTATOR
+}
+
+model User {
+  id          String              @id @default(cuid())
+  email       String              @unique
+  name        String?
+  password    String
+  role        Role                @default(ANNOTATOR)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  annotations Annotation[]
+  assignments ProjectAssignment[]
+
+  @@map("users")
+}
+
+model ProjectAssignment {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+  @@map("project_assignments")
+}
+
 model Project {
   id          String   @id @default(cuid())
   name        String
   description String?
-  type        String   // text_classification | ner | image_classification | bounding_box | audio_transcription | qa_review | freeform
-  config      Json     // annotation config: labels, options, etc.
+  type        String
+  config      Json
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   tasks       Task[]
+  assignments ProjectAssignment[]
 
   @@map("projects")
 }
@@ -25,7 +60,7 @@ model Task {
   id          String       @id @default(cuid())
   projectId   String
   project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  data        Json         // task content: text, imageUrl, audioUrl, question, etc.
+  data        Json
   status      TaskStatus   @default(PENDING)
   order       Int          @default(0)
   createdAt   DateTime     @default(now())
@@ -40,12 +75,15 @@ model Annotation {
   id        String   @id @default(cuid())
   taskId    String
   task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  result    Json     // annotation result: varies by project type
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  result    Json
   notes     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([taskId])
+  @@index([userId])
   @@map("annotations")
 }
 

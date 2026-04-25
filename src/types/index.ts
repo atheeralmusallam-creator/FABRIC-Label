@@ -7,6 +7,7 @@ export type ProjectType =
   | "bounding_box"
   | "audio_transcription"
   | "qa_review"
+  | "safety"
   | "freeform";
 
 export type TaskStatus = "PENDING" | "SUBMITTED" | "SKIPPED";

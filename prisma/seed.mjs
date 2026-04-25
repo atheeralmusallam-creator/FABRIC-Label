@@ -1,6 +1,13 @@
 // prisma/seed.mjs
 import { PrismaClient } from "@prisma/client";
+import crypto from "crypto";
 const prisma = new PrismaClient();
+
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const hash = crypto.scryptSync(password, salt, 64).toString("hex");
+  return `${salt}:${hash}`;
+}
 
 async function main() {
   console.log("🌱 Seeding Annotation Studio...");
@@ -318,9 +325,54 @@ async function main() {
     });
   }
 
+
+
+  // ─── Users and role examples ──────────────────────────────────────────────
+  const admin = await prisma.user.upsert({
+    where: { email: "admin@fabric.local" },
+    update: { role: "ADMIN" },
+    create: {
+      email: "admin@fabric.local",
+      name: "Admin",
+      password: hashPassword("admin123"),
+      role: "ADMIN",
+    },
+  });
+
+  const manager = await prisma.user.upsert({
+    where: { email: "manager@fabric.local" },
+    update: { role: "MANAGER" },
+    create: {
+      email: "manager@fabric.local",
+      name: "Manager",
+      password: hashPassword("manager123"),
+      role: "MANAGER",
+    },
+  });
+
+  const annotator = await prisma.user.upsert({
+    where: { email: "annotator@fabric.local" },
+    update: { role: "ANNOTATOR" },
+    create: {
+      email: "annotator@fabric.local",
+      name: "Annotator",
+      password: hashPassword("annotator123"),
+      role: "ANNOTATOR",
+    },
+  });
+
+  for (const projectId of ["proj_text_class", "proj_ner", "proj_img_class"]) {
+    await prisma.projectAssignment.upsert({
+      where: { projectId_userId: { projectId, userId: annotator.id } },
+      update: {},
+      create: { projectId, userId: annotator.id },
+    });
+  }
+
   console.log("✅ Seed complete!");
   console.log(`   Projects created: 7`);
   console.log(`   Tasks created: ${textClassTasks.length + nerTasks.length + imgClassTasks.length + bboxTasks.length + audioTasks.length + qaTasks.length + freeformTasks.length}`);
+  console.log("   Default users: admin@fabric.local / admin123, manager@fabric.local / manager123, annotator@fabric.local / annotator123");
 }
 
 main()

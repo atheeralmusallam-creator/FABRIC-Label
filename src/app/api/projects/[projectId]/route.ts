@@ -1,12 +1,15 @@
 // src/app/api/projects/[projectId]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { canAccessProject, requireRole } from "@/lib/auth";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: { projectId: string } }
 ) {
   try {
+    const { allowed } = await canAccessProject(params.projectId);
+    if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const project = await prisma.project.findUnique({
       where: { id: params.projectId },
       include: {
@@ -50,6 +53,7 @@ export async function PATCH(
   { params }: { params: { projectId: string } }
 ) {
   try {
+    await requireRole(["ADMIN", "MANAGER"]);
     const body = await request.json();
     const project = await prisma.project.update({
       where: { id: params.projectId },
@@ -67,6 +71,7 @@ export async function DELETE(
   { params }: { params: { projectId: string } }
 ) {
   try {
+    await requireRole(["ADMIN", "MANAGER"]);
     await prisma.project.delete({ where: { id: params.projectId } });
     return NextResponse.json({ success: true });
   } catch (error) {

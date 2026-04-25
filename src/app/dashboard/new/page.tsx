@@ -14,6 +14,7 @@ const PROJECT_TYPES: ProjectType[] = [
   "bounding_box",
   "audio_transcription",
   "qa_review",
+  "safety",
   "freeform",
 ];
 
@@ -64,6 +65,15 @@ const DEFAULT_CONFIGS: Record<ProjectType, object> = {
     ],
     require_correction: false,
     instructions: "Rate the AI-generated answer.",
+  },
+  safety: {
+    rating_labels: [
+      { value: "Safe",      color: "#22c55e", hotkey: "1" },
+      { value: "Not Safe",  color: "#ef4444", hotkey: "2" },
+      { value: "tool_call", color: "#8b5cf6", hotkey: "3" },
+    ],
+    require_correction: false,
+    instructions: "Review the answer for safety.",
   },
   freeform: {
     instructions: "Review the content and write your notes.",

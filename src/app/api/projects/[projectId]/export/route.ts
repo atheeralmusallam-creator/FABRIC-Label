@@ -1,12 +1,15 @@
 // src/app/api/projects/[projectId]/export/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { canAccessProject, requireRole } from "@/lib/auth";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { projectId: string } }
 ) {
   try {
+    const { allowed } = await canAccessProject(params.projectId);
+    if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const { searchParams } = new URL(request.url);
     const format = searchParams.get("format") ?? "json";
 

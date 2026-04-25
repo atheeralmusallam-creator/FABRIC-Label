@@ -6,6 +6,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getProjectTypeLabel, getProjectTypeIcon, formatDate } from "@/lib/utils";
 import { ProjectType } from "@/types";
+import { requireRole } from "@/lib/auth";
 
 async function getProject(id: string) {
   return prisma.project.findUnique({
@@ -15,8 +16,30 @@ async function getProject(id: string) {
         orderBy: { order: "asc" },
         include: { annotations: { take: 1 } },
       },
+      assignments: { include: { user: true }, orderBy: { createdAt: "desc" } },
     },
   });
+}
+
+async function assignUserAction(formData: FormData) {
+  "use server";
+  await requireRole(["ADMIN", "MANAGER"]);
+  const projectId = String(formData.get("projectId") || "");
+  const userId = String(formData.get("userId") || "");
+  if (projectId && userId) {
+    await prisma.projectAssignment.upsert({
+      where: { projectId_userId: { projectId, userId } },
+      update: {},
+      create: { projectId, userId },
+    });
+  }
+}
+
+async function removeAssignmentAction(formData: FormData) {
+  "use server";
+  await requireRole(["ADMIN", "MANAGER"]);
+  const id = String(formData.get("id") || "");
+  if (id) await prisma.projectAssignment.delete({ where: { id } });
 }
 
 export default async function ProjectSettingsPage({
@@ -24,6 +47,7 @@ export default async function ProjectSettingsPage({
 }: {
   params: { projectId: string };
 }) {
+  await requireRole(["ADMIN", "MANAGER"]);
   const project = await getProject(params.projectId);
   if (!project) notFound();
 
@@ -32,6 +56,7 @@ export default async function ProjectSettingsPage({
   const skipped = project.tasks.filter((t) => t.status === "SKIPPED").length;
   const pending = project.tasks.filter((t) => t.status === "PENDING").length;
   const progress = total > 0 ? Math.round(((submitted + skipped) / total) * 100) : 0;
+  const annotators = await prisma.user.findMany({ where: { role: "ANNOTATOR" }, orderBy: { email: "asc" } });
 
   return (
     <div className="min-h-screen bg-[#0e0f14]">
@@ -61,6 +86,12 @@ export default async function ProjectSettingsPage({
               </div>
             </div>
             <div className="flex gap-2">
+              <Link
+                href={`/projects/${project.id}/import`}
+                className="text-sm px-4 py-2 bg-[#1a1d27] border border-[#2a2d3e] hover:border-indigo-500/50 text-gray-300 hover:text-white rounded-lg transition-colors"
+              >
+                ⬆️ Import Tasks
+              </Link>
               <Link
                 href={`/projects/${project.id}`}
                 className="text-sm px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors"
@@ -135,6 +166,36 @@ export default async function ProjectSettingsPage({
             >
               📊 Export CSV
             </a>
+          </div>
+        </div>
+
+        <div className="bg-[#13151e] border border-[#2a2d3e] rounded-xl p-6">
+          <h2 className="text-sm font-semibold text-white mb-2">Assigned Annotators</h2>
+          <p className="text-xs text-gray-500 mb-4">Annotators only see projects assigned to them.</p>
+          <form action={assignUserAction} className="flex gap-3 mb-4">
+            <input type="hidden" name="projectId" value={project.id} />
+            <select name="userId" className="flex-1 rounded-lg bg-[#0e0f14] border border-[#2a2d3e] px-3 py-2 text-sm text-gray-200">
+              {annotators.map((user) => (
+                <option key={user.id} value={user.id}>{user.name || user.email} — {user.email}</option>
+              ))}
+            </select>
+            <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded-lg">Assign</button>
+          </form>
+          <div className="space-y-2">
+            {project.assignments.length === 0 ? (
+              <div className="text-sm text-gray-500">No annotators assigned.</div>
+            ) : project.assignments.map((assignment) => (
+              <div key={assignment.id} className="flex items-center justify-between rounded-lg bg-[#0e0f14] border border-[#2a2d3e] px-3 py-2">
+                <div>
+                  <div className="text-sm text-white">{assignment.user.name || assignment.user.email}</div>
+                  <div className="text-xs text-gray-500">{assignment.user.email}</div>
+                </div>
+                <form action={removeAssignmentAction}>
+                  <input type="hidden" name="id" value={assignment.id} />
+                  <button className="text-xs text-red-400 hover:text-red-300">Remove</button>
+                </form>
+              </div>
+            ))}
           </div>
         </div>
 

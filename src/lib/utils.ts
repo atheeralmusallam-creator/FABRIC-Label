@@ -23,6 +23,7 @@ export function getProjectTypeLabel(type: ProjectType): string {
     bounding_box: "Bounding Box",
     audio_transcription: "Audio Transcription",
     qa_review: "Q&A Review",
+    safety: "Safety Review",
     freeform: "Free-form Notes",
   };
   return labels[type] ?? type;
@@ -36,6 +37,7 @@ export function getProjectTypeIcon(type: ProjectType): string {
     bounding_box: "📦",
     audio_transcription: "🎙️",
     qa_review: "💬",
+    safety: "🛡️",
     freeform: "📝",
   };
   return icons[type] ?? "📋";
@@ -49,6 +51,7 @@ export function getProjectTypeColor(type: ProjectType): string {
     bounding_box: "bg-orange-500/20 text-orange-400 border-orange-500/30",
     audio_transcription: "bg-pink-500/20 text-pink-400 border-pink-500/30",
     qa_review: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30",
+    safety: "bg-red-500/20 text-red-400 border-red-500/30",
     freeform: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
   };
   return colors[type] ?? "bg-gray-500/20 text-gray-400 border-gray-500/30";

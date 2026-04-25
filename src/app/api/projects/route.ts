@@ -1,10 +1,13 @@
 // src/app/api/projects/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireUser, requireRole } from "@/lib/auth";
 
 export async function GET() {
   try {
+    const user = await requireUser();
     const projects = await prisma.project.findMany({
+      where: user.role === "ANNOTATOR" ? { assignments: { some: { userId: user.id } } } : {},
       orderBy: { createdAt: "desc" },
       include: {
         _count: { select: { tasks: true } },
@@ -41,6 +44,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    await requireRole(["ADMIN", "MANAGER"]);
     const body = await request.json();
     const { name, description, type, config } = body;
 
