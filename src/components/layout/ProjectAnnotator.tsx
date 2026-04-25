@@ -222,9 +222,12 @@ export function ProjectAnnotator({
       <div className="flex items-center justify-between px-5 py-3 border-b border-[#2a2d3e] bg-[#13151e]">
 
         <div className="flex items-center gap-2 text-sm">
-          <Link href="/dashboard" className="text-gray-500 hover:text-white">
-            Projects
-          </Link>
+          <Link
+  href={project.organizationId ? `/organizations/${project.organizationId}` : "/dashboard"}
+  className="text-gray-500 hover:text-white"
+>
+  Projects
+</Link>
 
           <span className="text-gray-700">/</span>
 
