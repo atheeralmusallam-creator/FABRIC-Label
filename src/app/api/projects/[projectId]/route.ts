@@ -9,7 +9,10 @@ export async function GET(
 ) {
   try {
     const { allowed } = await canAccessProject(params.projectId);
-    if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!allowed) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const project = await prisma.project.findUnique({
       where: { id: params.projectId },
       include: {
@@ -54,11 +57,19 @@ export async function PATCH(
 ) {
   try {
     await requireRole(["ADMIN", "MANAGER"]);
+
+    const { allowed } = await canAccessProject(params.projectId);
+    if (!allowed) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const body = await request.json();
+
     const project = await prisma.project.update({
       where: { id: params.projectId },
       data: body,
     });
+
     return NextResponse.json(project);
   } catch (error) {
     console.error("PATCH /api/projects/[id] error:", error);
@@ -72,8 +83,17 @@ export async function DELETE(
 ) {
   try {
     await requireRole(["ADMIN", "MANAGER"]);
-    await prisma.project.delete({ where: { id: params.projectId } });
-    return NextResponse.json({ success: true });
+
+    const { allowed } = await canAccessProject(params.projectId);
+    if (!allowed) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    await prisma.project.delete({
+      where: { id: params.projectId },
+    });
+
+    return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("DELETE /api/projects/[id] error:", error);
     return NextResponse.json({ error: "Failed to delete project" }, { status: 500 });
