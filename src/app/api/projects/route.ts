@@ -10,10 +10,9 @@ export async function GET() {
       where: user.role === "ANNOTATOR" ? { assignments: { some: { userId: user.id } } } : {},
       orderBy: { createdAt: "desc" },
       include: {
+        organization: { select: { id: true, name: true } },
         _count: { select: { tasks: true } },
-        tasks: {
-          select: { status: true },
-        },
+        tasks: { select: { status: true } },
       },
     });
 
@@ -46,14 +45,19 @@ export async function POST(request: NextRequest) {
   try {
     await requireRole(["ADMIN", "MANAGER"]);
     const body = await request.json();
-    const { name, description, type, config } = body;
+    const { name, description, type, config, organizationId } = body;
 
     if (!name || !type || !config) {
       return NextResponse.json({ error: "name, type, and config are required" }, { status: 400 });
     }
 
+    if (organizationId) {
+      const org = await prisma.organization.findUnique({ where: { id: organizationId } });
+      if (!org) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+    }
+
     const project = await prisma.project.create({
-      data: { name, description, type, config },
+      data: { name, description, type, config, organizationId: organizationId ?? null },
     });
 
     return NextResponse.json(project, { status: 201 });

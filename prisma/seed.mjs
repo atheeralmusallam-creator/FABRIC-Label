@@ -12,6 +12,12 @@ function hashPassword(password) {
 async function main() {
   console.log("🌱 Seeding Annotation Studio...");
 
+  const allamOrg = await prisma.organization.upsert({
+    where: { id: "org_allam" },
+    update: { name: "ALLAM" },
+    create: { id: "org_allam", name: "ALLAM", description: "Default organization" },
+  });
+
   // ─── 1. Text Classification ───────────────────────────────────────────────
   const textClassProject = await prisma.project.upsert({
     where: { id: "proj_text_class" },
@@ -368,6 +374,11 @@ async function main() {
       create: { projectId, userId: annotator.id },
     });
   }
+
+  await prisma.project.updateMany({
+    where: { organizationId: null },
+    data: { organizationId: allamOrg.id },
+  });
 
   console.log("✅ Seed complete!");
   console.log(`   Projects created: 7`);

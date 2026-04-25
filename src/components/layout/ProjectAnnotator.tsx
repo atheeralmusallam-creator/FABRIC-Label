@@ -124,7 +124,7 @@ export function ProjectAnnotator({ project }: { project: ProjectWithTasks }) {
     <div className="flex flex-col h-screen bg-[#0e0f14] overflow-hidden">
       <header className="flex-shrink-0 flex items-center justify-between px-4 py-3 bg-[#13151e] border-b border-[#2a2d3e] z-10">
         <div className="flex items-center gap-3 min-w-0">
-          <Link href="/dashboard" className="text-gray-500 hover:text-white transition-colors flex-shrink-0">
+          <Link href={project.organizationId ? `/organizations/${project.organizationId}` : "/dashboard"} className="text-gray-500 hover:text-white transition-colors flex-shrink-0">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>

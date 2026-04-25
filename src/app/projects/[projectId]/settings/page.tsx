@@ -126,25 +126,6 @@ export default async function ProjectSettingsPage({
             </div>
           </div>
         </div>
-
-        {/* Project config */}
-        <div className="bg-[#13151e] border border-[#2a2d3e] rounded-xl p-6">
-          <h2 className="text-sm font-semibold text-white mb-4">Configuration</h2>
-          <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-            <div>
-              <span className="text-gray-600">Type</span>
-              <div className="text-gray-300 mt-1">{getProjectTypeLabel(project.type as ProjectType)}</div>
-            </div>
-            <div>
-              <span className="text-gray-600">Created</span>
-              <div className="text-gray-300 mt-1">{formatDate(project.createdAt)}</div>
-            </div>
-          </div>
-          <pre className="bg-[#0a0b10] border border-[#2a2d3e] rounded-lg p-4 text-xs text-green-400 font-mono overflow-auto max-h-64">
-            {JSON.stringify(project.config, null, 2)}
-          </pre>
-        </div>
-
         {/* Export */}
         <div className="bg-[#13151e] border border-[#2a2d3e] rounded-xl p-6">
           <h2 className="text-sm font-semibold text-white mb-2">Export Annotations</h2>

@@ -165,8 +165,18 @@ export type AnnotationResult =
 
 // ─── API Response Types ────────────────────────────────────────────────────
 
+export interface Organization {
+  id: string;
+  name: string;
+  description?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Project {
   id: string;
+  organizationId?: string | null;
+  organization?: Organization | null;
   name: string;
   description?: string | null;
   type: ProjectType;

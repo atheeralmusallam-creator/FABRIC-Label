@@ -9,6 +9,7 @@ async function getProject(projectId: string) {
   return prisma.project.findUnique({
     where: { id: projectId },
     include: {
+      organization: { select: { id: true, name: true } },
       tasks: {
         orderBy: { order: "asc" },
         include: { annotations: { orderBy: { createdAt: "desc" }, take: 1 } },

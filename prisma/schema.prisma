@@ -14,6 +14,24 @@ enum Role {
   ANNOTATOR
 }
 
+enum TaskStatus {
+  PENDING
+  SUBMITTED
+  SKIPPED
+}
+
+model Organization {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  projects    Project[]
+
+  @@map("organizations")
+}
+
 model User {
   id          String              @id @default(cuid())
   email       String              @unique
@@ -43,16 +61,19 @@ model ProjectAssignment {
 }
 
 model Project {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  type        String
-  config      Json
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  tasks       Task[]
-  assignments ProjectAssignment[]
+  id             String    @id @default(cuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  name           String
+  description    String?
+  type           String
+  config         Json
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  tasks          Task[]
+  assignments    ProjectAssignment[]
 
+  @@index([organizationId])
   @@map("projects")
 }
 
@@ -85,10 +106,4 @@ model Annotation {
   @@index([taskId])
   @@index([userId])
   @@map("annotations")
-}
-
-enum TaskStatus {
-  PENDING
-  SUBMITTED
-  SKIPPED
 }

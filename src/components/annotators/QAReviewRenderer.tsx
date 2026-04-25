@@ -27,7 +27,7 @@ export function QAReviewRenderer({ data, config, result, onChange }: Props) {
         hotkey: String(index + 1),
       }));
     }
-    return (config.rating_labels ?? []).map((label, index) => ({
+    return (config.rating_labels ?? []).map((label: any, index: number) => ({
       ...label,
       hotkey: label.hotkey ?? String(index + 1),
     }));
