@@ -9,6 +9,7 @@ export async function GET(
 ) {
   try {
     const { allowed } = await canAccessProject(params.projectId);
+
     if (!allowed) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -16,10 +17,21 @@ export async function GET(
     const project = await prisma.project.findUnique({
       where: { id: params.projectId },
       include: {
+        assignments: {
+          include: {
+            user: {
+              select: { id: true, name: true, email: true, role: true },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+        },
         tasks: {
           orderBy: { order: "asc" },
           include: {
-            annotations: { orderBy: { createdAt: "desc" }, take: 1 },
+            annotations: {
+              orderBy: { createdAt: "desc" },
+              take: 1,
+            },
           },
         },
       },
@@ -42,12 +54,16 @@ export async function GET(
         submitted,
         skipped,
         pending,
-        progress: total > 0 ? Math.round(((submitted + skipped) / total) * 100) : 0,
+        progress:
+          total > 0 ? Math.round(((submitted + skipped) / total) * 100) : 0,
       },
     });
   } catch (error) {
     console.error("GET /api/projects/[id] error:", error);
-    return NextResponse.json({ error: "Failed to fetch project" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch project" },
+      { status: 500 }
+    );
   }
 }
 
@@ -59,21 +75,88 @@ export async function PATCH(
     await requireRole(["ADMIN", "MANAGER"]);
 
     const { allowed } = await canAccessProject(params.projectId);
+
     if (!allowed) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const body = await request.json();
 
-    const project = await prisma.project.update({
-      where: { id: params.projectId },
-      data: body,
+    const {
+      name,
+      description,
+      priority,
+      type,
+      config,
+      organizationId,
+      annotatorIds,
+    } = body;
+
+    const project = await prisma.$transaction(async (tx) => {
+      const updatedProject = await tx.project.update({
+        where: { id: params.projectId },
+        data: {
+          ...(name !== undefined ? { name } : {}),
+          ...(description !== undefined ? { description } : {}),
+          ...(priority !== undefined ? { priority } : {}),
+          ...(type !== undefined ? { type } : {}),
+          ...(config !== undefined ? { config } : {}),
+          ...(organizationId !== undefined ? { organizationId } : {}),
+        },
+      });
+
+      if (Array.isArray(annotatorIds)) {
+        const cleanAnnotatorIds = annotatorIds
+          .filter((id) => typeof id === "string" && id.trim())
+          .map((id) => id.trim());
+
+        const users = await tx.user.findMany({
+          where: {
+            id: { in: cleanAnnotatorIds },
+            role: "ANNOTATOR",
+          },
+          select: { id: true },
+        });
+
+        const validAnnotatorIds = users.map((u) => u.id);
+
+        await tx.projectAssignment.deleteMany({
+          where: { projectId: params.projectId },
+        });
+
+        if (validAnnotatorIds.length > 0) {
+          await tx.projectAssignment.createMany({
+            data: validAnnotatorIds.map((userId) => ({
+              projectId: params.projectId,
+              userId,
+            })),
+            skipDuplicates: true,
+          });
+        }
+      }
+
+      return tx.project.findUnique({
+        where: { id: params.projectId },
+        include: {
+          assignments: {
+            include: {
+              user: {
+                select: { id: true, name: true, email: true, role: true },
+              },
+            },
+            orderBy: { createdAt: "asc" },
+          },
+        },
+      });
     });
 
     return NextResponse.json(project);
   } catch (error) {
     console.error("PATCH /api/projects/[id] error:", error);
-    return NextResponse.json({ error: "Failed to update project" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to update project" },
+      { status: 500 }
+    );
   }
 }
 
@@ -85,6 +168,7 @@ export async function DELETE(
     await requireRole(["ADMIN", "MANAGER"]);
 
     const { allowed } = await canAccessProject(params.projectId);
+
     if (!allowed) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -96,6 +180,9 @@ export async function DELETE(
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("DELETE /api/projects/[id] error:", error);
-    return NextResponse.json({ error: "Failed to delete project" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to delete project" },
+      { status: 500 }
+    );
   }
 }
