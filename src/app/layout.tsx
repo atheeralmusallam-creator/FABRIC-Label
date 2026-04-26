@@ -1,9 +1,9 @@
-// src/app/layout.tsx
 import type { Metadata } from "next";
 import "./globals.css";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 export const metadata: Metadata = {
-  title: "Annotation Studio",
+  title: "FABRIC Label",
   description: "A flexible multi-type data annotation platform",
 };
 
@@ -13,8 +13,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <body className="bg-[#0e0f14] text-gray-100 antialiased min-h-screen">
+    <html lang="en" suppressHydrationWarning>
+      <body className="antialiased min-h-screen">
+        <ThemeToggle />
         {children}
       </body>
     </html>
