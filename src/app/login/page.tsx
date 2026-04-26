@@ -4,16 +4,23 @@ import { setSession, verifyPassword } from "@/lib/auth";
 
 async function loginAction(formData: FormData) {
   "use server";
+
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
   const next = String(formData.get("next") || "/dashboard");
 
   const user = await prisma.user.findUnique({ where: { email } });
+
   if (!user || !verifyPassword(password, user.password)) {
     redirect(`/login?error=invalid&next=${encodeURIComponent(next)}`);
   }
 
   setSession({ id: user.id, role: user.role, email: user.email });
+
+  if (user.mustChangePassword) {
+    redirect(`/change-password?next=${encodeURIComponent(next)}`);
+  }
+
   redirect(next.startsWith("/") ? next : "/dashboard");
 }
 
