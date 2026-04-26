@@ -146,7 +146,7 @@ export default function NewProjectPage({
       if (!res.ok) throw new Error("Failed to create project");
 
       const project = await res.json();
-      router.push(`/projects/${project.id}/import`);
+      router.push(`/projects/${project.id}/settings`);
     } catch {
       setError("Failed to create project. Please try again.");
       setLoading(false);
