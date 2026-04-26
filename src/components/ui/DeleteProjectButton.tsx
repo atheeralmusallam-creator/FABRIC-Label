@@ -3,7 +3,15 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export function DeleteProjectButton({ projectId }: { projectId: string }) {
+export function DeleteProjectButton({
+  projectId,
+  organizationId,
+  variant = "default",
+}: {
+  projectId: string;
+  organizationId?: string;
+  variant?: "default" | "menu";
+}) {
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [input, setInput] = useState("");
@@ -24,7 +32,7 @@ export function DeleteProjectButton({ projectId }: { projectId: string }) {
 
       if (!res.ok) throw new Error();
 
-      router.push("/dashboard");
+      router.push(organizationId ? `/organizations/${organizationId}` : "/dashboard");
       router.refresh();
     } catch {
       alert("Failed to delete project");
@@ -36,25 +44,25 @@ export function DeleteProjectButton({ projectId }: { projectId: string }) {
 
   if (confirming) {
     return (
-      <div className="flex flex-col gap-2">
-        <span className="text-xs text-red-400">
-          Type <b>DELETE</b> to confirm deletion
-        </span>
+      <div className="p-3 space-y-2">
+        <div className="text-xs text-red-400">
+          Type <b>DELETE</b> to confirm
+        </div>
 
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="DELETE"
-          className="text-xs px-2 py-1 bg-[#0e0f14] border border-[#2a2d3e] rounded text-white outline-none"
+          className="w-full text-xs px-2 py-1 bg-[#0e0f14] border border-[#2a2d3e] rounded text-white outline-none"
         />
 
-        <div className="flex items-center gap-2">
+        <div className="flex gap-2">
           <button
             onClick={handleDelete}
             disabled={deleting}
             className="text-xs px-3 py-1.5 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded-lg"
           >
-            {deleting ? "Deleting..." : "Confirm Delete"}
+            {deleting ? "Deleting..." : "Delete"}
           </button>
 
           <button
@@ -68,6 +76,17 @@ export function DeleteProjectButton({ projectId }: { projectId: string }) {
           </button>
         </div>
       </div>
+    );
+  }
+
+  if (variant === "menu") {
+    return (
+      <button
+        onClick={() => setConfirming(true)}
+        className="block w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-950/30 hover:text-red-300"
+      >
+        Delete Project
+      </button>
     );
   }
 
