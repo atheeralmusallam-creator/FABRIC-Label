@@ -15,7 +15,12 @@ async function loginAction(formData: FormData) {
     redirect(`/login?error=invalid&next=${encodeURIComponent(next)}`);
   }
 
-  setSession({ id: user.id, role: user.role, email: user.email });
+  setSession({
+  id: user.id,
+  role: user.role,
+  roles: user.roles?.length ? user.roles : [user.role],
+  email: user.email,
+});
 
   if (user.mustChangePassword) {
     redirect(`/change-password?next=${encodeURIComponent(next)}`);
