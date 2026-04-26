@@ -28,7 +28,6 @@ export function ThemeToggle() {
     <button
       onClick={toggleTheme}
       className="fixed bottom-5 left-5 z-[99999] rounded-full border border-[#2a2d3e] bg-[#13151e] px-4 py-2 text-xs text-gray-200 shadow-xl hover:border-indigo-500 light-toggle"
-      title="Toggle theme"
     >
       {theme === "dark" ? "☀️ Light" : "🌙 Dark"}
     </button>
