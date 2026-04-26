@@ -120,6 +120,20 @@ export function ProjectAnnotator({
     setCurrentIndex((i) => Math.max(i - 1, 0));
   }, []);
 
+  const goToFirstUnsolved = useCallback(() => {
+    const index = filteredTasks.findIndex((task) => {
+      const annotation = task.annotations?.[0];
+      return task.status !== "SKIPPED" && annotation?.status !== "SUBMITTED";
+    });
+
+    if (index >= 0) {
+      setCurrentIndex(index);
+      showToast("Moved to first unsolved task");
+    } else {
+      showToast("All visible tasks are completed");
+    }
+  }, [filteredTasks]);
+
   const saveDraft = useCallback(async () => {
     if (!pendingResult || !currentTask || currentTask.status === "SUBMITTED") return;
 
@@ -290,6 +304,13 @@ export function ProjectAnnotator({
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={goToFirstUnsolved}
+            className="text-xs bg-[#1a1d27] border border-[#2a2d3e] hover:border-indigo-500/50 text-gray-300 hover:text-white px-4 py-2 rounded-lg"
+          >
+            Label
+          </button>
+
           <a
             href={`/api/projects/${project.id}/iaa`}
             download
