@@ -38,17 +38,18 @@ model Organization {
 }
 
 model User {
-  id              String              @id @default(cuid())
-  email           String              @unique
-  name            String?
-  password        String
-  role            Role                @default(ANNOTATOR)
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  id                 String              @id @default(cuid())
+  email              String              @unique
+  name               String?
+  password           String
+  role               Role                @default(ANNOTATOR)
+  mustChangePassword Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
-  annotations     Annotation[]
-  assignments     ProjectAssignment[]
-  taskAssignments TaskAssignment[]
+  annotations        Annotation[]
+  assignments        ProjectAssignment[]
+  taskAssignments    TaskAssignment[]
 
   @@map("users")
 }
