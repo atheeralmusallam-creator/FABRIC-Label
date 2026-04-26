@@ -7,7 +7,9 @@ import Link from "next/link";
 import { ProjectType } from "@/types";
 import { getProjectTypeLabel, getProjectTypeIcon } from "@/lib/utils";
 
-const PROJECT_TYPES: ProjectType[] = [
+type ProjectTypeWithPreference = ProjectType | "pairwise_review";
+
+const PROJECT_TYPES: ProjectTypeWithPreference[] = [
   "text_classification",
   "ner",
   "image_classification",
@@ -15,10 +17,11 @@ const PROJECT_TYPES: ProjectType[] = [
   "audio_transcription",
   "qa_review",
   "safety",
+  "pairwise_review",
   "freeform",
 ];
 
-const DEFAULT_CONFIGS: Record<ProjectType, object> = {
+const DEFAULT_CONFIGS: Record<ProjectTypeWithPreference, object> = {
   text_classification: {
     labels: [
       { value: "positive", color: "#22c55e", hotkey: "1" },
@@ -72,13 +75,19 @@ const DEFAULT_CONFIGS: Record<ProjectType, object> = {
       { value: "Not Safe", hotkey: "2" },
       { value: "tool_call", hotkey: "3" },
     ],
-    severity_labels: [
-      { value: "Low" },
-      { value: "Medium" },
-      { value: "Critical" },
-    ],
+    severity_labels: [{ value: "Low" }, { value: "Medium" }, { value: "Critical" }],
     require_correction: false,
     instructions: "Review the answer for safety.",
+  },
+  pairwise_review: {
+    rating_labels: [
+      { value: "A is better than B", color: "#22c55e", hotkey: "1" },
+      { value: "B is better than A", color: "#14b8a6", hotkey: "2" },
+      { value: "Both are equal", color: "#f59e0b", hotkey: "3" },
+      { value: "Need expert", color: "#8b5cf6", hotkey: "4" },
+      { value: "Prompt has issue", color: "#ef4444", hotkey: "5" },
+    ],
+    instructions: "Compare Response A and Response B, then choose the best preference.",
   },
   freeform: {
     instructions: "Review the content and write your notes.",
@@ -86,6 +95,16 @@ const DEFAULT_CONFIGS: Record<ProjectType, object> = {
     tags: ["good", "unclear", "needs-review"],
   },
 };
+
+function projectTypeIcon(type: ProjectTypeWithPreference) {
+  if (type === "pairwise_review") return "💎";
+  return getProjectTypeIcon(type as ProjectType);
+}
+
+function projectTypeLabel(type: ProjectTypeWithPreference) {
+  if (type === "pairwise_review") return "Preference";
+  return getProjectTypeLabel(type as ProjectType);
+}
 
 export default function NewProjectPage({
   params,
@@ -97,7 +116,7 @@ export default function NewProjectPage({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("");
-  const [type, setType] = useState<ProjectType>("safety");
+  const [type, setType] = useState<ProjectTypeWithPreference>("safety");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -161,8 +180,8 @@ export default function NewProjectPage({
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. [EN - Safety] allam34b..."
-              className="w-full bg-[#13151e] border border-[#2a2d3e] focus:border-indigo-500 rounded-lg px-4 py-2.5 text-white text-sm outline-none transition-colors"
+              placeholder="e.g. Preference"
+              className="w-full bg-[#13151e] border border-[#2a2d3e] focus:border-emerald-500 rounded-lg px-4 py-2.5 text-white text-sm outline-none transition-colors"
             />
           </div>
 
@@ -175,7 +194,7 @@ export default function NewProjectPage({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Optional description..."
               rows={2}
-              className="w-full bg-[#13151e] border border-[#2a2d3e] focus:border-indigo-500 rounded-lg px-4 py-2.5 text-white text-sm outline-none transition-colors resize-none"
+              className="w-full bg-[#13151e] border border-[#2a2d3e] focus:border-emerald-500 rounded-lg px-4 py-2.5 text-white text-sm outline-none transition-colors resize-none"
             />
           </div>
 
@@ -186,7 +205,7 @@ export default function NewProjectPage({
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value)}
-              className="w-full bg-[#13151e] border border-[#2a2d3e] focus:border-indigo-500 rounded-lg px-4 py-2.5 text-white text-sm outline-none transition-colors"
+              className="w-full bg-[#13151e] border border-[#2a2d3e] focus:border-emerald-500 rounded-lg px-4 py-2.5 text-white text-sm outline-none transition-colors"
             >
               <option value="">No priority</option>
               <option value="High">High</option>
@@ -199,6 +218,7 @@ export default function NewProjectPage({
             <label className="block text-sm font-medium text-gray-300 mb-3">
               Annotation Type *
             </label>
+
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {PROJECT_TYPES.map((t) => (
                 <button
@@ -207,12 +227,12 @@ export default function NewProjectPage({
                   onClick={() => setType(t)}
                   className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-sm transition-all text-left ${
                     type === t
-                      ? "border-indigo-500 bg-indigo-500/10 text-white"
-                      : "border-[#2a2d3e] bg-[#13151e] text-gray-400 hover:border-[#3a3d4e] hover:text-white"
+                      ? "border-emerald-500 bg-emerald-500/10 text-white"
+                      : "border-[#2a2d3e] bg-[#13151e] text-gray-400 hover:border-emerald-500/50 hover:text-white"
                   }`}
                 >
-                  <span>{getProjectTypeIcon(t)}</span>
-                  <span className="truncate">{getProjectTypeLabel(t)}</span>
+                  <span>{projectTypeIcon(t)}</span>
+                  <span className="truncate">{projectTypeLabel(t)}</span>
                 </button>
               ))}
             </div>
@@ -228,7 +248,7 @@ export default function NewProjectPage({
             <button
               onClick={handleSubmit}
               disabled={loading}
-              className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium px-6 py-2.5 rounded-lg transition-colors"
+              className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 shadow-md shadow-emerald-500/20 disabled:opacity-50 text-white text-sm font-medium px-6 py-2.5 rounded-lg transition-all"
             >
               {loading ? "Creating..." : "Create Project"}
             </button>
