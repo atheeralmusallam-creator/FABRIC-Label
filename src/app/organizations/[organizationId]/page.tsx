@@ -7,14 +7,34 @@ import { requireUser } from "@/lib/auth";
 import { UserMenu } from "@/components/auth/UserMenu";
 import { OrganizationProjectsClient } from "@/components/organizations/OrganizationProjectsClient";
 
-async function getOrganization(organizationId: string, user: { id: string; role: string }) {
+async function getOrganization(
+  organizationId: string,
+  user: { id: string; role: string }
+) {
   const org = await prisma.organization.findUnique({
     where: { id: organizationId },
     include: {
       projects: {
-        where: user.role === "ANNOTATOR" ? { assignments: { some: { userId: user.id } } } : {},
+        where:
+          user.role === "ANNOTATOR"
+            ? { assignments: { some: { userId: user.id } } }
+            : {},
         orderBy: { createdAt: "desc" },
-        include: { tasks: { select: { status: true } } },
+        include: {
+          tasks: {
+            select: {
+              status: true,
+              assignments: {
+                select: { userId: true },
+              },
+              annotations: {
+                where: { userId: user.id },
+                select: { status: true },
+                take: 1,
+              },
+            },
+          },
+        },
       },
     },
   });
@@ -23,9 +43,26 @@ async function getOrganization(organizationId: string, user: { id: string; role:
 
   const projects = org.projects.map((p) => {
     const total = p.tasks.length;
+
+    const assignedTasks =
+      user.role === "ANNOTATOR"
+        ? p.tasks.filter(
+            (t) =>
+              t.assignments.length === 0 ||
+              t.assignments.some((a) => a.userId === user.id)
+          )
+        : p.tasks;
+
+    const assignedTotal = assignedTasks.length;
+
+    const completedAssigned = assignedTasks.filter(
+      (t) => t.annotations?.[0]?.status === "SUBMITTED"
+    ).length;
+
     const submitted = p.tasks.filter((t) => t.status === "SUBMITTED").length;
     const skipped = p.tasks.filter((t) => t.status === "SKIPPED").length;
-    const progress = total > 0 ? Math.round(((submitted + skipped) / total) * 100) : 0;
+    const progress =
+      total > 0 ? Math.round(((submitted + skipped) / total) * 100) : 0;
 
     return {
       id: p.id,
@@ -39,6 +76,9 @@ async function getOrganization(organizationId: string, user: { id: string; role:
         skipped,
         pending: total - submitted - skipped,
         progress,
+        assignedTotal,
+        completedAssigned,
+        totalTasks: total,
       },
     };
   });
@@ -60,7 +100,9 @@ export default async function OrganizationPage({
   const org = await getOrganization(params.organizationId, user);
 
   if (!org) notFound();
-  if (user.role === "ANNOTATOR" && org.projects.length === 0) redirect("/dashboard");
+  if (user.role === "ANNOTATOR" && org.projects.length === 0) {
+    redirect("/dashboard");
+  }
 
   const canManage = user.role !== "ANNOTATOR";
 
@@ -81,7 +123,10 @@ export default async function OrganizationPage({
 
           <nav className="flex items-center gap-6 text-sm text-gray-400">
             {user.role === "ADMIN" && (
-              <Link href="/admin/users" className="hover:text-white transition-colors">
+              <Link
+                href="/admin/users"
+                className="hover:text-white transition-colors"
+              >
                 Users
               </Link>
             )}
