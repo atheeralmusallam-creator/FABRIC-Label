@@ -11,6 +11,11 @@ import { EditProjectButton } from "@/components/ui/EditProjectButton";
 
 interface ProjectWithTasks extends Project {
   priority?: string | null;
+  progressStats?: {
+    completedAssigned: number;
+    assignedTotal: number;
+    totalTasks: number;
+  };
   assignments?: {
     id: string;
     userId: string;
@@ -77,6 +82,13 @@ export function ProjectAnnotator({
 
   const currentTask = filteredTasks[currentIndex];
   const currentAnnotation = currentTask?.annotations?.[0];
+
+  const completedAssigned =
+    project.progressStats?.completedAssigned ??
+    tasks.filter((task) => task.annotations?.[0]?.status === "SUBMITTED").length;
+
+  const assignedTotal = project.progressStats?.assignedTotal ?? tasks.length;
+  const totalTasks = project.progressStats?.totalTasks ?? tasks.length;
 
   useEffect(() => {
     setCurrentIndex(0);
@@ -281,7 +293,7 @@ export function ProjectAnnotator({
   return (
     <div className="flex flex-col h-screen bg-[#0e0f14] overflow-hidden">
       <div className="flex items-center justify-between px-5 py-3 border-b border-[#2a2d3e] bg-[#13151e]">
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-2 text-sm min-w-0">
           <Link
             href={
               project.organizationId
@@ -297,10 +309,16 @@ export function ProjectAnnotator({
 
           <Link
             href={`/projects/${project.id}`}
-            className="text-white font-semibold hover:text-indigo-300"
+            className="text-white font-semibold hover:text-indigo-300 truncate"
           >
             {project.name}
           </Link>
+
+          <span className="text-gray-700">·</span>
+
+          <span className="text-xs text-gray-400 whitespace-nowrap">
+            {completedAssigned}/{assignedTotal} assigned · {totalTasks} total
+          </span>
         </div>
 
         <div className="flex items-center gap-3">
