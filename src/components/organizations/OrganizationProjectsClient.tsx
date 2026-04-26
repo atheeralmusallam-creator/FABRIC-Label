@@ -21,6 +21,9 @@ type ProjectCard = {
     skipped: number;
     pending: number;
     progress: number;
+    assignedTotal?: number;
+    completedAssigned?: number;
+    totalTasks?: number;
   };
 };
 
@@ -178,120 +181,130 @@ export function OrganizationProjectsClient({ organization, projects, canManage }
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {projects.map((project) => (
-            <div
-              key={project.id}
-              className="relative group bg-[#13151e] border border-[#2a2d3e] hover:border-indigo-500/50 rounded-xl transition-all hover:bg-[#1a1d27]"
-            >
-              <Link href={`/projects/${project.id}`} className="block p-5">
-                <div className="flex items-start justify-between mb-3 pr-10">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-xl">
-                      {getProjectTypeIcon(project.type as ProjectType)}
-                    </span>
-                    <h2 className="text-sm font-semibold text-white group-hover:text-indigo-300 transition-colors truncate">
-                      {project.name}
-                    </h2>
-                  </div>
+          {projects.map((project) => {
+            const completedAssigned = project.stats.completedAssigned ?? project.stats.submitted;
+            const assignedTotal = project.stats.assignedTotal ?? project.stats.total;
+            const totalTasks = project.stats.totalTasks ?? project.stats.total;
 
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full border ${getProjectTypeColor(
-                      project.type as ProjectType
-                    )}`}
-                  >
-                    {getProjectTypeLabel(project.type as ProjectType)}
-                  </span>
-                </div>
+            return (
+              <div
+                key={project.id}
+                className="relative group bg-[#13151e] border border-[#2a2d3e] hover:border-indigo-500/50 rounded-xl transition-all hover:bg-[#1a1d27]"
+              >
+                <Link href={`/projects/${project.id}`} className="block p-5">
+                  <div className="flex items-start justify-between mb-3 pr-10">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-xl">
+                        {getProjectTypeIcon(project.type as ProjectType)}
+                      </span>
+                      <h2 className="text-sm font-semibold text-white group-hover:text-indigo-300 transition-colors truncate">
+                        {project.name}
+                      </h2>
+                    </div>
 
-                {project.description && (
-                  <p className="text-gray-500 text-xs mb-3 line-clamp-2">
-                    {project.description}
-                  </p>
-                )}
-
-                {project.priority && (
-                  <div className="inline-flex text-xs text-red-400 border border-red-500/40 bg-red-500/10 rounded px-2 py-1 mb-4">
-                    Priority: {project.priority}
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>{project.stats.total} tasks</span>
-                    <span>{project.stats.progress}%</span>
-                  </div>
-
-                  <div className="h-1.5 bg-[#2a2d3e] rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-indigo-500 rounded-full transition-all"
-                      style={{ width: `${project.stats.progress}%` }}
-                    />
-                  </div>
-
-                  <div className="flex gap-3 text-xs">
-                    <span className="text-green-500">
-                      {project.stats.submitted} done
-                    </span>
-                    <span className="text-yellow-500">
-                      {project.stats.skipped} skipped
-                    </span>
-                    <span className="text-gray-600">
-                      {project.stats.pending} pending
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full border ${getProjectTypeColor(
+                        project.type as ProjectType
+                      )}`}
+                    >
+                      {getProjectTypeLabel(project.type as ProjectType)}
                     </span>
                   </div>
-                </div>
-              </Link>
 
-              {canManage && (
-                <div className="absolute top-4 right-4 z-20">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setOpenMenuId(openMenuId === project.id ? null : project.id);
-                    }}
-                    className="w-8 h-8 rounded-lg bg-[#1a1d27] border border-[#2a2d3e] text-gray-400 hover:text-white hover:border-indigo-500/50"
-                  >
-                    ...
-                  </button>
+                  {project.description && (
+                    <p className="text-gray-500 text-xs mb-3 line-clamp-2">
+                      {project.description}
+                    </p>
+                  )}
 
-                  {openMenuId === project.id && (
-                    <div
+                  {project.priority && (
+                    <div className="inline-flex text-xs text-red-400 border border-red-500/40 bg-red-500/10 rounded px-2 py-1 mb-4">
+                      Priority: {project.priority}
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <div className="text-xs text-gray-400">
+                      {completedAssigned}/{assignedTotal} assigned · {totalTasks} total
+                    </div>
+
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>{project.stats.total} tasks</span>
+                      <span>{project.stats.progress}%</span>
+                    </div>
+
+                    <div className="h-1.5 bg-[#2a2d3e] rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-indigo-500 rounded-full transition-all"
+                        style={{ width: `${project.stats.progress}%` }}
+                      />
+                    </div>
+
+                    <div className="flex gap-3 text-xs">
+                      <span className="text-green-500">
+                        {project.stats.submitted} done
+                      </span>
+                      <span className="text-yellow-500">
+                        {project.stats.skipped} skipped
+                      </span>
+                      <span className="text-gray-600">
+                        {project.stats.pending} pending
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+
+                {canManage && (
+                  <div className="absolute top-4 right-4 z-20">
+                    <button
+                      type="button"
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
+                        setOpenMenuId(openMenuId === project.id ? null : project.id);
                       }}
-                      className="absolute right-0 mt-2 w-44 bg-[#13151e] border border-[#2a2d3e] rounded-lg shadow-xl overflow-hidden"
+                      className="w-8 h-8 rounded-lg bg-[#1a1d27] border border-[#2a2d3e] text-gray-400 hover:text-white hover:border-indigo-500/50"
                     >
-                      <div className="px-2 py-2">
-                        <EditProjectButton
+                      ...
+                    </button>
+
+                    {openMenuId === project.id && (
+                      <div
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                        className="absolute right-0 mt-2 w-44 bg-[#13151e] border border-[#2a2d3e] rounded-lg shadow-xl overflow-hidden"
+                      >
+                        <div className="px-2 py-2">
+                          <EditProjectButton
+                            projectId={project.id}
+                            initialName={project.name}
+                            initialDescription={project.description}
+                            initialPriority={project.priority}
+                          />
+                        </div>
+
+                        <a
+                          href={`/api/projects/${project.id}/iaa`}
+                          download
+                          className="block w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-[#1a1d27] hover:text-white"
+                        >
+                          Export IAA
+                        </a>
+
+                        <DeleteProjectButton
                           projectId={project.id}
-                          initialName={project.name}
-                          initialDescription={project.description}
-                          initialPriority={project.priority}
+                          organizationId={organization.id}
+                          variant="menu"
                         />
                       </div>
-
-                      <a
-                        href={`/api/projects/${project.id}/iaa`}
-                        download
-                        className="block w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-[#1a1d27] hover:text-white"
-                      >
-                        Export IAA
-                      </a>
-
-                      <DeleteProjectButton
-                        projectId={project.id}
-                        organizationId={organization.id}
-                        variant="menu"
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </main>
