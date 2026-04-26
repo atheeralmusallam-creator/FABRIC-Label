@@ -1,6 +1,6 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
@@ -18,26 +18,56 @@ async function getProject(id: string) {
   });
 }
 
-async function assignUserAction(formData: FormData) {
+async function saveAnnotatorsAction(formData: FormData) {
   "use server";
+
   await requireRole(["ADMIN", "MANAGER"]);
+
   const projectId = String(formData.get("projectId") || "");
-  const userId = String(formData.get("userId") || "");
+  const userIds = formData.getAll("userIds").map(String).filter(Boolean);
 
-  if (projectId && userId) {
-    await prisma.projectAssignment.upsert({
-      where: { projectId_userId: { projectId, userId } },
-      update: {},
-      create: { projectId, userId },
+  if (!projectId) return;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.projectAssignment.deleteMany({
+      where: { projectId },
     });
-  }
-}
 
-async function removeAssignmentAction(formData: FormData) {
-  "use server";
-  await requireRole(["ADMIN", "MANAGER"]);
-  const id = String(formData.get("id") || "");
-  if (id) await prisma.projectAssignment.delete({ where: { id } });
+    if (userIds.length > 0) {
+      await tx.projectAssignment.createMany({
+        data: userIds.map((userId) => ({ projectId, userId })),
+        skipDuplicates: true,
+      });
+    }
+
+    const tasks = await tx.task.findMany({
+      where: { projectId },
+      orderBy: { order: "asc" },
+      select: { id: true },
+    });
+
+    await tx.taskAssignment.deleteMany({
+      where: { task: { projectId } },
+    });
+
+    if (userIds.length > 0 && tasks.length > 0) {
+      const taskAssignments = tasks.flatMap((task, taskIndex) => {
+        const count = Math.min(3, userIds.length);
+
+        return Array.from({ length: count }, (_, offset) => ({
+          taskId: task.id,
+          userId: userIds[(taskIndex + offset) % userIds.length],
+        }));
+      });
+
+      await tx.taskAssignment.createMany({
+        data: taskAssignments,
+        skipDuplicates: true,
+      });
+    }
+  });
+
+  redirect(`/projects/${projectId}/settings`);
 }
 
 export default async function ProjectSettingsPage({
@@ -56,15 +86,24 @@ export default async function ProjectSettingsPage({
   const pending = project.tasks.filter((t) => t.status === "PENDING").length;
 
   const annotators = await prisma.user.findMany({
-    where: { role: "ANNOTATOR" },
+    where: {
+      OR: [
+        { role: "ANNOTATOR" },
+        { roles: { has: "ANNOTATOR" } },
+      ],
+    },
     orderBy: { email: "asc" },
   });
+
+  const assignedUserIds = new Set(project.assignments.map((a) => a.userId));
 
   return (
     <div className="min-h-screen bg-[#0e0f14]">
       <header className="border-b border-[#2a2d3e] bg-[#13151e] px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center gap-3">
-          <Link href="/dashboard" className="text-gray-500 hover:text-white text-sm">Projects</Link>
+          <Link href="/dashboard" className="text-gray-500 hover:text-white text-sm">
+            Projects
+          </Link>
           <span className="text-gray-700">/</span>
           <Link href={`/projects/${project.id}`} className="text-gray-500 hover:text-white text-sm">
             {project.name}
@@ -76,7 +115,21 @@ export default async function ProjectSettingsPage({
 
       <main className="max-w-5xl mx-auto px-6 py-10 space-y-8">
         <div className="bg-[#13151e] border border-[#2a2d3e] rounded-xl p-6">
-          <h1 className="text-xl font-bold text-white">{project.name}</h1>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-bold text-white">{project.name}</h1>
+              <p className="text-xs text-gray-500 mt-1">
+                Assign annotators first, then import tasks.
+              </p>
+            </div>
+
+            <Link
+              href={`/projects/${project.id}/import`}
+              className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 shadow-md shadow-emerald-500/20 text-white text-sm font-medium px-4 py-2 rounded-lg transition-all"
+            >
+              Continue to Import
+            </Link>
+          </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-5">
             <div className="bg-[#0e0f14] border border-[#2a2d3e] rounded-lg p-3">
@@ -99,6 +152,51 @@ export default async function ProjectSettingsPage({
         </div>
 
         <div className="bg-[#13151e] border border-[#2a2d3e] rounded-xl p-6">
+          <h2 className="text-sm font-semibold text-white mb-2">Assigned Annotators</h2>
+          <p className="text-xs text-gray-500 mb-4">
+            Select multiple annotators. Tasks will be distributed across 3 annotators per task.
+          </p>
+
+          <form action={saveAnnotatorsAction} className="space-y-4">
+            <input type="hidden" name="projectId" value={project.id} />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-80 overflow-y-auto pr-1">
+              {annotators.map((user) => (
+                <label
+                  key={user.id}
+                  className="flex items-center gap-3 rounded-lg bg-[#0e0f14] border border-[#2a2d3e] hover:border-emerald-500/50 px-3 py-2 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    name="userIds"
+                    value={user.id}
+                    defaultChecked={assignedUserIds.has(user.id)}
+                    className="accent-emerald-500"
+                  />
+
+                  <div className="min-w-0">
+                    <div className="text-sm text-white truncate">
+                      {user.name || user.email}
+                    </div>
+                    <div className="text-xs text-gray-500 truncate">{user.email}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 shadow-md shadow-emerald-500/20 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-all">
+                Save Annotators
+              </button>
+
+              <span className="text-xs text-gray-500">
+                Currently assigned: {project.assignments.length}
+              </span>
+            </div>
+          </form>
+        </div>
+
+        <div className="bg-[#13151e] border border-[#2a2d3e] rounded-xl p-6">
           <h2 className="text-sm font-semibold text-white mb-2">Export</h2>
           <p className="text-xs text-gray-500 mb-4">
             Download submitted annotations or IAA report.
@@ -108,7 +206,7 @@ export default async function ProjectSettingsPage({
             <a
               href={`/api/projects/${project.id}/export?format=json`}
               download
-              className="flex items-center gap-2 px-4 py-2 bg-[#1a1d27] border border-[#2a2d3e] hover:border-indigo-500/50 text-gray-300 hover:text-white text-sm rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-[#1a1d27] border border-[#2a2d3e] hover:border-emerald-500/50 text-gray-300 hover:text-white text-sm rounded-lg transition-colors"
             >
               📄 Export JSON
             </a>
@@ -116,7 +214,7 @@ export default async function ProjectSettingsPage({
             <a
               href={`/api/projects/${project.id}/export?format=csv`}
               download
-              className="flex items-center gap-2 px-4 py-2 bg-[#1a1d27] border border-[#2a2d3e] hover:border-indigo-500/50 text-gray-300 hover:text-white text-sm rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-[#1a1d27] border border-[#2a2d3e] hover:border-emerald-500/50 text-gray-300 hover:text-white text-sm rounded-lg transition-colors"
             >
               📊 Export CSV
             </a>
@@ -124,48 +222,10 @@ export default async function ProjectSettingsPage({
             <a
               href={`/api/projects/${project.id}/iaa`}
               download
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 shadow-md shadow-emerald-500/20 text-white text-sm rounded-lg transition-all"
             >
               📈 Export IAA Excel
             </a>
-          </div>
-        </div>
-
-        <div className="bg-[#13151e] border border-[#2a2d3e] rounded-xl p-6">
-          <h2 className="text-sm font-semibold text-white mb-2">Assigned Annotators</h2>
-          <p className="text-xs text-gray-500 mb-4">Annotators only see projects assigned to them.</p>
-
-          <form action={assignUserAction} className="flex gap-3 mb-4">
-            <input type="hidden" name="projectId" value={project.id} />
-            <select name="userId" className="flex-1 rounded-lg bg-[#0e0f14] border border-[#2a2d3e] px-3 py-2 text-sm text-gray-200">
-              {annotators.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.name || user.email} — {user.email}
-                </option>
-              ))}
-            </select>
-            <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded-lg">
-              Assign
-            </button>
-          </form>
-
-          <div className="space-y-2">
-            {project.assignments.length === 0 ? (
-              <div className="text-sm text-gray-500">No annotators assigned.</div>
-            ) : (
-              project.assignments.map((assignment) => (
-                <div key={assignment.id} className="flex items-center justify-between rounded-lg bg-[#0e0f14] border border-[#2a2d3e] px-3 py-2">
-                  <div>
-                    <div className="text-sm text-white">{assignment.user.name || assignment.user.email}</div>
-                    <div className="text-xs text-gray-500">{assignment.user.email}</div>
-                  </div>
-                  <form action={removeAssignmentAction}>
-                    <input type="hidden" name="id" value={assignment.id} />
-                    <button className="text-xs text-red-400 hover:text-red-300">Remove</button>
-                  </form>
-                </div>
-              ))
-            )}
           </div>
         </div>
 
@@ -202,10 +262,10 @@ export default async function ProjectSettingsPage({
                               {ann.user?.name || ann.user?.email || "Unknown"}
                             </span>
                             <span className="text-gray-300">
-                              Evaluation: {r?.rating || "—"}
+                              Preference: {r?.evaluation || r?.rating || "—"}
                             </span>
                             <span className="text-gray-300">
-                              Severity: {r?.severity || "—"}
+                              Comment A: {r?.comments_response_a || "—"}
                             </span>
                             <span className="text-gray-500 truncate">
                               Notes: {ann.notes || "—"}
