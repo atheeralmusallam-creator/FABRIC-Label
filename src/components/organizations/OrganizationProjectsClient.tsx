@@ -41,6 +41,19 @@ export function OrganizationProjectsClient({ organization, projects, canManage }
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+
+  const filteredProjects = projects.filter((project) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+
+    return (
+      project.name.toLowerCase().includes(q) ||
+      project.type.toLowerCase().includes(q) ||
+      (project.description || "").toLowerCase().includes(q) ||
+      (project.priority || "").toLowerCase().includes(q)
+    );
+  });
 
   const saveOrganization = async () => {
     if (!name.trim()) {
@@ -141,7 +154,8 @@ export function OrganizationProjectsClient({ organization, projects, canManage }
               )}
 
               <p className="text-gray-500 text-sm mt-1">
-                {projects.length} project{projects.length !== 1 ? "s" : ""}
+                {filteredProjects.length}/{projects.length} project
+                {projects.length !== 1 ? "s" : ""}
               </p>
             </>
           )}
@@ -154,6 +168,27 @@ export function OrganizationProjectsClient({ organization, projects, canManage }
           >
             <span>+</span> New Project
           </Link>
+        )}
+      </div>
+
+      <div className="mb-6 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+        <input
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setOpenMenuId(null);
+          }}
+          placeholder="Search projects by name, type, description, or priority..."
+          className="w-full sm:max-w-md bg-[#13151e] border border-[#2a2d3e] focus:border-indigo-500 rounded-lg px-4 py-2.5 text-white text-sm outline-none transition-colors"
+        />
+
+        {search && (
+          <button
+            onClick={() => setSearch("")}
+            className="text-xs text-gray-500 hover:text-white transition-colors"
+          >
+            Clear filter
+          </button>
         )}
       </div>
 
@@ -179,9 +214,14 @@ export function OrganizationProjectsClient({ organization, projects, canManage }
             </Link>
           )}
         </div>
+      ) : filteredProjects.length === 0 ? (
+        <div className="text-center py-20 border border-dashed border-[#2a2d3e] rounded-xl">
+          <p className="text-gray-400 text-lg font-medium">No projects match this filter</p>
+          <p className="text-gray-600 text-sm mt-2">Try a different project name or type.</p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {projects.map((project) => {
+          {filteredProjects.map((project) => {
             const completedAssigned = project.stats.completedAssigned ?? project.stats.submitted;
             const assignedTotal = project.stats.assignedTotal ?? project.stats.total;
             const totalTasks = project.stats.totalTasks ?? project.stats.total;
