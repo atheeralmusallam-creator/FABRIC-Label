@@ -31,6 +31,17 @@ export function EditProjectButton({
   const [annotators, setAnnotators] = useState<Annotator[]>([]);
   const [selectedAnnotatorIds, setSelectedAnnotatorIds] = useState<string[]>([]);
   const [loadingAnnotators, setLoadingAnnotators] = useState(false);
+  const [annotatorSearch, setAnnotatorSearch] = useState("");
+
+  const filteredAnnotators = annotators.filter((user) => {
+    const q = annotatorSearch.trim().toLowerCase();
+    if (!q) return true;
+
+    return (
+      (user.name || "").toLowerCase().includes(q) ||
+      user.email.toLowerCase().includes(q)
+    );
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -158,13 +169,28 @@ export function EditProjectButton({
             </span>
           </div>
 
+          <input
+            value={annotatorSearch}
+            onChange={(e) => setAnnotatorSearch(e.target.value)}
+            placeholder="Search annotators by name or email..."
+            className="w-full mb-2 bg-[#0e0f14] border border-[#2a2d3e] rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
+          />
+
           <div className="max-h-48 overflow-y-auto bg-[#0e0f14] border border-[#2a2d3e] rounded-lg p-2 space-y-1">
             {loadingAnnotators ? (
-              <div className="text-xs text-gray-500 px-2 py-3">Loading annotators...</div>
+              <div className="text-xs text-gray-500 px-2 py-3">
+                Loading annotators...
+              </div>
             ) : annotators.length === 0 ? (
-              <div className="text-xs text-gray-500 px-2 py-3">No annotators found</div>
+              <div className="text-xs text-gray-500 px-2 py-3">
+                No annotators found
+              </div>
+            ) : filteredAnnotators.length === 0 ? (
+              <div className="text-xs text-gray-500 px-2 py-3">
+                No matching annotators
+              </div>
             ) : (
-              annotators.map((user) => (
+              filteredAnnotators.map((user) => (
                 <label
                   key={user.id}
                   className="flex items-center gap-2 px-2 py-2 rounded hover:bg-[#1a1d27] cursor-pointer"
