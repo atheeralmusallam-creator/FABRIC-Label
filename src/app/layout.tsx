@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 export const metadata: Metadata = {
   title: "FABRIC Label",
@@ -15,7 +14,6 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className="bg-[#0e0f14] text-gray-100 antialiased min-h-screen">
-        <ThemeToggle />
         {children}
       </body>
     </html>
