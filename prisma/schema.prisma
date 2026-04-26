@@ -1,4 +1,3 @@
-// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -42,8 +41,10 @@ model User {
   email              String              @unique
   name               String?
   password           String
-  role               Role                @default(ANNOTATOR)
+  role               Role                @default(ANNOTATOR) // ⬅️ نخليه مؤقت
+  roles              Role[]              @default([ANNOTATOR]) // 🔥 الجديد
   mustChangePassword Boolean             @default(true)
+
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 
