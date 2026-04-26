@@ -36,10 +36,21 @@ export default async function DashboardPage() {
     <div className="min-h-screen bg-[#0e0f14]">
       <header className="border-b border-[#2a2d3e] bg-[#13151e] px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-sm font-bold">A</div>
-            <span className="text-lg font-semibold text-white tracking-tight">Annotation Studio</span>
-          </div>
+         <div className="flex items-center gap-3">
+  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 shadow-md shadow-emerald-500/20 flex items-center justify-center text-sm font-bold">
+    A
+  </div>
+
+  <div className="flex flex-col leading-tight">
+    <span className="text-lg font-semibold text-white tracking-tight">
+      Annotation Studio
+    </span>
+
+    <span className="text-[10px] text-emerald-400 tracking-wider uppercase opacity-80">
+      Powered By <span className="font-semibold">FABRIC</span>
+    </span>
+  </div>
+</div>
           <nav className="flex items-center gap-6 text-sm text-gray-400">
             <Link href="/dashboard" className="text-white font-medium">Organizations</Link>
             {user.role === "ADMIN" && <Link href="/admin/users" className="hover:text-white transition-colors">Users</Link>}
