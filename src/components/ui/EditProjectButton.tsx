@@ -1,7 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+
+type Annotator = {
+  id: string;
+  name?: string | null;
+  email: string;
+};
 
 export function EditProjectButton({
   projectId,
@@ -22,6 +28,49 @@ export function EditProjectButton({
   const [priority, setPriority] = useState(initialPriority ?? "");
   const [saving, setSaving] = useState(false);
 
+  const [annotators, setAnnotators] = useState<Annotator[]>([]);
+  const [selectedAnnotatorIds, setSelectedAnnotatorIds] = useState<string[]>([]);
+  const [loadingAnnotators, setLoadingAnnotators] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const load = async () => {
+      setLoadingAnnotators(true);
+
+      try {
+        const [usersRes, projectRes] = await Promise.all([
+          fetch("/api/users?role=ANNOTATOR"),
+          fetch(`/api/projects/${projectId}`),
+        ]);
+
+        if (!usersRes.ok || !projectRes.ok) throw new Error();
+
+        const users = await usersRes.json();
+        const project = await projectRes.json();
+
+        setAnnotators(users);
+        setSelectedAnnotatorIds(
+          (project.assignments || [])
+            .map((a: any) => a.userId)
+            .filter(Boolean)
+        );
+      } catch {
+        alert("Failed to load annotators");
+      } finally {
+        setLoadingAnnotators(false);
+      }
+    };
+
+    load();
+  }, [open, projectId]);
+
+  const toggleAnnotator = (id: string) => {
+    setSelectedAnnotatorIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
   const save = async () => {
     if (!name.trim()) {
       alert("Project name is required");
@@ -37,6 +86,7 @@ export function EditProjectButton({
         name,
         description,
         priority: priority || null,
+        annotatorIds: selectedAnnotatorIds,
       }),
     });
 
@@ -64,7 +114,7 @@ export function EditProjectButton({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-[#13151e] border border-[#2a2d3e] rounded-xl p-5 space-y-4">
+      <div className="w-full max-w-lg bg-[#13151e] border border-[#2a2d3e] rounded-xl p-5 space-y-4">
         <h2 className="text-white font-semibold">Edit Project</h2>
 
         <div>
@@ -98,6 +148,42 @@ export function EditProjectButton({
             <option value="Medium">Medium</option>
             <option value="Low">Low</option>
           </select>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-xs text-gray-500">Annotators</label>
+            <span className="text-xs text-gray-600">
+              {selectedAnnotatorIds.length} selected
+            </span>
+          </div>
+
+          <div className="max-h-48 overflow-y-auto bg-[#0e0f14] border border-[#2a2d3e] rounded-lg p-2 space-y-1">
+            {loadingAnnotators ? (
+              <div className="text-xs text-gray-500 px-2 py-3">Loading annotators...</div>
+            ) : annotators.length === 0 ? (
+              <div className="text-xs text-gray-500 px-2 py-3">No annotators found</div>
+            ) : (
+              annotators.map((user) => (
+                <label
+                  key={user.id}
+                  className="flex items-center gap-2 px-2 py-2 rounded hover:bg-[#1a1d27] cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedAnnotatorIds.includes(user.id)}
+                    onChange={() => toggleAnnotator(user.id)}
+                  />
+                  <div className="min-w-0">
+                    <div className="text-sm text-white truncate">
+                      {user.name || user.email}
+                    </div>
+                    <div className="text-xs text-gray-500 truncate">{user.email}</div>
+                  </div>
+                </label>
+              ))
+            )}
+          </div>
         </div>
 
         <div className="flex justify-end gap-2">
