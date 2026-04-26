@@ -18,7 +18,7 @@ interface Props {
 }
 
 export function RendererRouter({ project, task, result, onChange }: Props) {
-  const type = project.type as ProjectType;
+  const type = project.type as string;
   const config = project.config as any;
   const taskAny = task as any;
 
