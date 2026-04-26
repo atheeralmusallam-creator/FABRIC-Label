@@ -69,14 +69,14 @@ export default function ImportTasksPage() {
           Upload CSV, Excel, or JSON. The app will detect task fields and options automatically.
         </p>
 
-        <div className="bg-[#13151e] border border-[#2a2d3e] rounded-xl p-6 space-y-6">
+        <div className="bg-[#13151e] border border-emerald-500/20 rounded-xl p-6 space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">Task file</label>
             <input
               type="file"
               accept=".csv,.xlsx,.xls,.json"
               onChange={(e) => setFile(e.target.files?.[0] || null)}
-              className="block w-full text-sm text-gray-300 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-indigo-500"
+              className="block w-full text-sm text-gray-300 file:mr-4 file:rounded-lg file:border-0 file:bg-gradient-to-r file:from-emerald-500 file:to-teal-600 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:from-emerald-400 hover:file:to-teal-500"
             />
             <p className="text-xs text-gray-600 mt-2">
               Supported: .csv, .xlsx, .xls, .json
@@ -88,7 +88,7 @@ export default function ImportTasksPage() {
               type="checkbox"
               checked={replaceExisting}
               onChange={(e) => setReplaceExisting(e.target.checked)}
-              className="mt-1"
+              className="mt-1 accent-emerald-500"
             />
             <span>
               <span className="block text-sm text-gray-200">Replace existing tasks</span>
@@ -134,10 +134,11 @@ export default function ImportTasksPage() {
             <button
               onClick={handleImport}
               disabled={loading}
-              className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium px-6 py-2.5 rounded-lg transition-colors"
+              className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 shadow-md shadow-emerald-500/20 disabled:opacity-50 text-white text-sm font-medium px-6 py-2.5 rounded-lg transition-all"
             >
               {loading ? "Importing..." : "Import Tasks"}
             </button>
+
             <Link
               href={`/projects/${projectId}`}
               className="bg-[#1a1d27] hover:bg-[#21253a] text-gray-300 text-sm font-medium px-6 py-2.5 rounded-lg transition-colors"
