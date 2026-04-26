@@ -113,7 +113,7 @@ export function OrganizationProjectsClient({ organization, projects, canManage }
                 <button
                   onClick={saveOrganization}
                   disabled={saving}
-                  className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg"
+                  className="bg-gradient-to-r from-emerald-500 to-teal-600  hover:from-emerald-400 hover:to-teal-500  shadow-md shadow-emerald-500/20 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg"
                 >
                   {saving ? "Saving..." : "Save"}
                 </button>
@@ -164,7 +164,7 @@ export function OrganizationProjectsClient({ organization, projects, canManage }
         {canManage && !editing && (
           <Link
             href={`/organizations/${organization.id}/new-project`}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-4 py-2 rounded-lg"
+            className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600  hover:from-emerald-400 hover:to-teal-500  shadow-md shadow-emerald-500/20 text-white text-sm font-medium px-4 py-2 rounded-lg"
           >
             <span>+</span> New Project
           </Link>
@@ -200,7 +200,7 @@ export function OrganizationProjectsClient({ organization, projects, canManage }
           {canManage && (
             <Link
               href={`/organizations/${organization.id}/new-project`}
-              className="inline-block mt-6 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-5 py-2.5 rounded-lg"
+              className="inline-block mt-6 bg-gradient-to-r from-emerald-500 to-teal-600  hover:from-emerald-400 hover:to-teal-500  shadow-md shadow-emerald-500/20 text-white text-sm font-medium px-5 py-2.5 rounded-lg"
             >
               Create Project
             </Link>
@@ -268,7 +268,7 @@ export function OrganizationProjectsClient({ organization, projects, canManage }
 
                     <div className="h-1.5 bg-[#2a2d3e] rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-indigo-500 rounded-full"
+                        className="h-full bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full"
                         style={{ width: `${project.stats.progress}%` }}
                       />
                     </div>
