@@ -32,6 +32,7 @@ export function ProjectAnnotator({
 }) {
   const [tasks, setTasks] = useState(project.tasks);
   const [filter, setFilter] = useState("");
+  const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
 
   const filteredTasks = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -39,6 +40,7 @@ export function ProjectAnnotator({
 
     return tasks.filter((task) => {
       const data = task.data as any;
+
       const haystack = [
         data?.id,
         data?.prompt,
@@ -81,7 +83,12 @@ export function ProjectAnnotator({
   });
 
   const currentTask = filteredTasks[currentIndex];
-  const currentAnnotation = currentTask?.annotations?.[0];
+
+  const selectedAnnotation =
+    currentTask?.annotations?.find((ann: any) => ann.id === selectedAnnotationId) ||
+    currentTask?.annotations?.[0];
+
+  const currentAnnotation = selectedAnnotation;
 
   const completedAssigned =
     project.progressStats?.completedAssigned ??
@@ -101,23 +108,26 @@ export function ProjectAnnotator({
   }, [currentIndex, filteredTasks.length]);
 
   useEffect(() => {
+    setSelectedAnnotationId(currentTask?.annotations?.[0]?.id ?? null);
+  }, [currentTask?.id]);
+
+  useEffect(() => {
     setPendingResult(null);
     setNotes("");
     setDraftState("idle");
     setSubmitError("");
 
-    if (currentTask?.annotations?.[0]) {
-      const ann = currentTask.annotations[0];
-      setPendingResult(ann.result as AnnotationResult);
-      setNotes(ann.notes ?? "");
-      setDraftState(ann.status === "DRAFT" ? "saved" : "idle");
+    if (selectedAnnotation) {
+      setPendingResult(selectedAnnotation.result as AnnotationResult);
+      setNotes(selectedAnnotation.notes ?? "");
+      setDraftState(selectedAnnotation.status === "DRAFT" ? "saved" : "idle");
     }
 
     loadGuard.current = {
       taskId: currentTask?.id ?? null,
       skipNextAutosave: true,
     };
-  }, [currentIndex, currentTask?.id]);
+  }, [currentTask?.id, selectedAnnotation?.id]);
 
   const showToast = (msg: string, type: "success" | "error" = "success") => {
     setToast({ msg, type });
@@ -197,7 +207,7 @@ export function ProjectAnnotator({
   const handleSubmit = useCallback(async () => {
     if (!currentTask) return;
 
-    if (!(pendingResult as any)?.rating) {
+    if (!(pendingResult as any)?.rating && !(pendingResult as any)?.evaluation) {
       setSubmitError("evaluation is required");
       return;
     }
@@ -295,11 +305,7 @@ export function ProjectAnnotator({
       <div className="flex items-center justify-between px-5 py-3 border-b border-[#2a2d3e] bg-[#13151e]">
         <div className="flex items-center gap-2 text-sm min-w-0">
           <Link
-            href={
-              project.organizationId
-                ? `/organizations/${project.organizationId}`
-                : "/dashboard"
-            }
+            href={project.organizationId ? `/organizations/${project.organizationId}` : "/dashboard"}
             className="text-gray-500 hover:text-white"
           >
             Projects
@@ -309,7 +315,7 @@ export function ProjectAnnotator({
 
           <Link
             href={`/projects/${project.id}`}
-            className="text-white font-semibold hover:text-indigo-300 truncate"
+            className="text-white font-semibold hover:text-emerald-300 truncate"
           >
             {project.name}
           </Link>
@@ -324,7 +330,7 @@ export function ProjectAnnotator({
         <div className="flex items-center gap-3">
           <button
             onClick={goToFirstUnsolved}
-            className="text-xs bg-[#1a1d27] border border-[#2a2d3e] hover:border-indigo-500/50 text-gray-300 hover:text-white px-4 py-2 rounded-lg"
+            className="text-xs bg-[#1a1d27] border border-[#2a2d3e] hover:border-emerald-500/50 text-gray-300 hover:text-white px-4 py-2 rounded-lg"
           >
             Label
           </button>
@@ -332,7 +338,7 @@ export function ProjectAnnotator({
           <a
             href={`/api/projects/${project.id}/iaa`}
             download
-            className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg"
+            className="text-xs bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 shadow-md shadow-emerald-500/20 text-white px-4 py-2 rounded-lg"
           >
             Export IAA
           </a>
@@ -361,13 +367,44 @@ export function ProjectAnnotator({
           {currentTask ? (
             <>
               <div className="flex-1 overflow-y-auto p-5">
+                {currentTask.annotations?.length > 0 && (
+                  <div className="mb-4 flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-gray-500 mr-1">Annotator:</span>
+
+                    {currentTask.annotations.map((ann: any) => {
+                      const name = ann.user?.name || ann.user?.email || "Unknown";
+                      const active = selectedAnnotationId === ann.id;
+
+                      return (
+                        <button
+                          key={ann.id}
+                          type="button"
+                          onClick={() => setSelectedAnnotationId(ann.id)}
+                          className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${
+                            active
+                              ? "bg-emerald-500/20 border-emerald-500 text-emerald-200"
+                              : "bg-[#1a1d27] border-[#2a2d3e] text-gray-400 hover:text-white hover:border-emerald-500/50"
+                          }`}
+                        >
+                          {name}
+                          <span className="ml-2 text-[10px] opacity-70">
+                            {ann.status}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
                 <RendererRouter
                   project={project as any}
                   task={currentTask as any}
                   result={pendingResult}
                   onChange={(result) => {
                     setPendingResult(result);
-                    if ((result as any)?.rating) setSubmitError("");
+                    if ((result as any)?.rating || (result as any)?.evaluation) {
+                      setSubmitError("");
+                    }
                   }}
                 />
               </div>
