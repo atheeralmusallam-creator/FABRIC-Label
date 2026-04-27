@@ -1,4 +1,3 @@
-// src/app/organizations/[organizationId]/new-project/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -56,9 +55,7 @@ const DEFAULT_CONFIGS: Record<ProjectTypeWithPreference, object> = {
     instructions: "Draw bounding boxes around objects.",
   },
   audio_transcription: {
-    instructions: "Listen and transcribe the audio. Mark unclear parts with [unclear].",
-    show_timestamps: false,
-    languages: ["English"],
+    instructions: "Listen and transcribe the audio.",
   },
   qa_review: {
     rating_labels: [
@@ -66,7 +63,6 @@ const DEFAULT_CONFIGS: Record<ProjectTypeWithPreference, object> = {
       { value: "partial", color: "#f59e0b", hotkey: "2" },
       { value: "incorrect", color: "#ef4444", hotkey: "3" },
     ],
-    require_correction: false,
     instructions: "Rate the AI-generated answer.",
   },
   safety: {
@@ -75,24 +71,20 @@ const DEFAULT_CONFIGS: Record<ProjectTypeWithPreference, object> = {
       { value: "Not Safe", hotkey: "2" },
       { value: "tool_call", hotkey: "3" },
     ],
-    severity_labels: [{ value: "Low" }, { value: "Medium" }, { value: "Critical" }],
-    require_correction: false,
     instructions: "Review the answer for safety.",
   },
   pairwise_review: {
     rating_labels: [
-      { value: "A is better than B", color: "#22c55e", hotkey: "1" },
-      { value: "B is better than A", color: "#14b8a6", hotkey: "2" },
-      { value: "Both are equal", color: "#f59e0b", hotkey: "3" },
-      { value: "Need expert", color: "#8b5cf6", hotkey: "4" },
-      { value: "Prompt has issue", color: "#ef4444", hotkey: "5" },
+      { value: "A is better than B", hotkey: "1" },
+      { value: "B is better than A", hotkey: "2" },
+      { value: "Both are equal", hotkey: "3" },
+      { value: "Need expert", hotkey: "4" },
+      { value: "Prompt has issue", hotkey: "5" },
     ],
-    instructions: "Compare Response A and Response B, then choose the best preference.",
+    instructions: "Compare responses.",
   },
   freeform: {
-    instructions: "Review the content and write your notes.",
-    min_length: 0,
-    tags: ["good", "unclear", "needs-review"],
+    instructions: "Write notes.",
   },
 };
 
@@ -106,17 +98,14 @@ function projectTypeLabel(type: ProjectTypeWithPreference) {
   return getProjectTypeLabel(type as ProjectType);
 }
 
-export default function NewProjectPage({
-  params,
-}: {
-  params: { organizationId: string };
-}) {
+export default function NewProjectPage({ params }: { params: { organizationId: string } }) {
   const router = useRouter();
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("");
   const [type, setType] = useState<ProjectTypeWithPreference>("safety");
+  const [adjudicationEnabled, setAdjudicationEnabled] = useState(false); // 🔥 الجديد
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -138,7 +127,10 @@ export default function NewProjectPage({
           description,
           priority: priority || null,
           type,
-          config: DEFAULT_CONFIGS[type],
+          config: {
+            ...DEFAULT_CONFIGS[type],
+            adjudication_enabled: adjudicationEnabled, // 🔥 المهم
+          },
           organizationId: params.organizationId,
         }),
       });
@@ -148,119 +140,52 @@ export default function NewProjectPage({
       const project = await res.json();
       router.push(`/projects/${project.id}/settings`);
     } catch {
-      setError("Failed to create project. Please try again.");
+      setError("Failed to create project.");
       setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-[#0e0f14]">
-      <header className="border-b border-[#2a2d3e] bg-[#13151e] px-6 py-4">
-        <div className="max-w-3xl mx-auto flex items-center gap-3">
-          <Link
-            href={`/organizations/${params.organizationId}`}
-            className="text-gray-500 hover:text-white transition-colors text-sm"
-          >
-            ← Organization
-          </Link>
-          <span className="text-gray-700">/</span>
-          <span className="text-sm text-white">New Project</span>
-        </div>
-      </header>
+      <main className="max-w-3xl mx-auto px-6 py-10 space-y-6">
+        <h1 className="text-2xl font-bold text-white">Create Project</h1>
 
-      <main className="max-w-3xl mx-auto px-6 py-10">
-        <h1 className="text-2xl font-bold text-white mb-8">Create New Project</h1>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Project name"
+          className="w-full p-3 bg-[#13151e] border border-[#2a2d3e] rounded-lg text-white"
+        />
 
-        <div className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Project Name *
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Preference"
-              className="w-full bg-[#13151e] border border-[#2a2d3e] focus:border-emerald-500 rounded-lg px-4 py-2.5 text-white text-sm outline-none transition-colors"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Description
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Optional description..."
-              rows={2}
-              className="w-full bg-[#13151e] border border-[#2a2d3e] focus:border-emerald-500 rounded-lg px-4 py-2.5 text-white text-sm outline-none transition-colors resize-none"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Priority <span className="text-gray-600">(optional)</span>
-            </label>
-            <select
-              value={priority}
-              onChange={(e) => setPriority(e.target.value)}
-              className="w-full bg-[#13151e] border border-[#2a2d3e] focus:border-emerald-500 rounded-lg px-4 py-2.5 text-white text-sm outline-none transition-colors"
-            >
-              <option value="">No priority</option>
-              <option value="High">High</option>
-              <option value="Medium">Medium</option>
-              <option value="Low">Low</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-3">
-              Annotation Type *
-            </label>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {PROJECT_TYPES.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setType(t)}
-                  className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-sm transition-all text-left ${
-                    type === t
-                      ? "border-emerald-500 bg-emerald-500/10 text-white"
-                      : "border-[#2a2d3e] bg-[#13151e] text-gray-400 hover:border-emerald-500/50 hover:text-white"
-                  }`}
-                >
-                  <span>{projectTypeIcon(t)}</span>
-                  <span className="truncate">{projectTypeLabel(t)}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {error && (
-            <div className="bg-red-900/30 border border-red-700/50 text-red-400 text-sm px-4 py-3 rounded-lg">
-              {error}
-            </div>
-          )}
-
-          <div className="flex gap-3">
-            <button
-              onClick={handleSubmit}
-              disabled={loading}
-              className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 shadow-md shadow-emerald-500/20 disabled:opacity-50 text-white text-sm font-medium px-6 py-2.5 rounded-lg transition-all"
-            >
-              {loading ? "Creating..." : "Create Project"}
+        <div className="grid grid-cols-2 gap-2">
+          {PROJECT_TYPES.map((t) => (
+            <button key={t} onClick={() => setType(t)}>
+              {projectTypeLabel(t)}
             </button>
-
-            <Link
-              href={`/organizations/${params.organizationId}`}
-              className="bg-[#1a1d27] hover:bg-[#21253a] text-gray-300 text-sm font-medium px-6 py-2.5 rounded-lg transition-colors"
-            >
-              Cancel
-            </Link>
-          </div>
+          ))}
         </div>
+
+        {/* 🔥 checkbox الجديد */}
+        <label className="flex items-start gap-3 rounded-lg bg-[#13151e] border border-[#2a2d3e] p-4">
+          <input
+            type="checkbox"
+            checked={adjudicationEnabled}
+            onChange={(e) => setAdjudicationEnabled(e.target.checked)}
+            className="mt-1 accent-emerald-500"
+          />
+          <span>
+            <div className="text-white text-sm">
+              Enable Adjudication (Tie-breaker)
+            </div>
+            <div className="text-gray-500 text-xs">
+              Assign task to 4th annotator if disagreement occurs
+            </div>
+          </span>
+        </label>
+
+        <button onClick={handleSubmit} className="bg-emerald-500 px-4 py-2 rounded">
+          Create
+        </button>
       </main>
     </div>
   );
