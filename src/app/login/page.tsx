@@ -58,10 +58,8 @@ export default function LoginPage({ searchParams }: { searchParams?: { error?: s
           <button className="w-full rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 transition-colors">Sign in</button>
         </form>
 
-        <div className="mt-6 text-xs text-gray-500 border-t border-[#2a2d3e] pt-4">
-          Default admin after seed: <span className="text-gray-300">admin@fabric.local</span> / <span className="text-gray-300">admin123</span>
-        </div>
-      </div>
-    </div>
-  );
-}
+        {process.env.NODE_ENV === "development" && (
+  <div className="mt-6 text-xs text-gray-500 border-t border-[#2a2d3e] pt-4">
+    Default admin after seed: <span className="text-gray-300">admin@fabric.local</span> / <span className="text-gray-300">admin123</span>
+  </div>
+)}
