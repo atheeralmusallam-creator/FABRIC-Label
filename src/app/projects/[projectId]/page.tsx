@@ -10,34 +10,39 @@ async function getProject(projectId: string, userId: string, role: string) {
     where: { projectId },
   });
 
+  const isAnnotatorOnly = role === "ANNOTATOR";
+
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     include: {
       organization: { select: { id: true, name: true } },
+
       assignments: {
-        include: { user: { select: { id: true, name: true, email: true } } },
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+        },
         orderBy: { createdAt: "asc" },
       },
+
       tasks: {
-        where:
-          role === "ANNOTATOR"
-            ? {
-                OR: [
-                  { assignments: { some: { userId } } },
-                  { assignments: { none: {} } },
-                ],
-              }
-            : {},
+        where: isAnnotatorOnly
+          ? {
+              OR: [
+                { assignments: { some: { userId } } },
+                { assignments: { none: {} } },
+              ],
+            }
+          : {},
         orderBy: { order: "asc" },
         include: {
           annotations: {
-            where: { userId },
+            where: isAnnotatorOnly ? { userId } : {},
             orderBy: { updatedAt: "desc" },
-            take: 1,
             include: {
               user: { select: { id: true, name: true, email: true } },
             },
           },
+
           assignments: {
             include: {
               user: { select: { id: true, name: true, email: true } },
@@ -52,9 +57,16 @@ async function getProject(projectId: string, userId: string, role: string) {
   if (!project) return null;
 
   const assignedTotal = project.tasks.length;
-  const completedAssigned = project.tasks.filter(
-    (task) => task.annotations?.[0]?.status === "SUBMITTED"
-  ).length;
+
+  const completedAssigned = project.tasks.filter((task) => {
+    if (isAnnotatorOnly) {
+      return task.annotations?.some(
+        (ann) => ann.userId === userId && ann.status === "SUBMITTED"
+      );
+    }
+
+    return task.annotations?.some((ann) => ann.status === "SUBMITTED");
+  }).length;
 
   return {
     ...project,
@@ -79,5 +91,10 @@ export default async function ProjectPage({
 
   if (!project) notFound();
 
-  return <ProjectAnnotator project={project as any} currentUserId={user.id} />;
+  return (
+    <ProjectAnnotator
+      project={project as any}
+      currentUserId={user.id}
+    />
+  );
 }
