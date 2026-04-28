@@ -26,6 +26,7 @@ interface ProjectWithTasks extends Project {
 
 export function ProjectAnnotator({
   project,
+  currentUserId,
 }: {
   project: ProjectWithTasks;
   currentUserId?: string;
@@ -64,9 +65,14 @@ export function ProjectAnnotator({
   }, [tasks, filter]);
 
   const [currentIndex, setCurrentIndex] = useState(() => {
-    const firstPending = project.tasks.findIndex(
-      (t) => t.status !== "SKIPPED" && t.annotations?.[0]?.status !== "SUBMITTED"
-    );
+    const firstPending = project.tasks.findIndex((t) => {
+      const myAnnotation = currentUserId
+        ? t.annotations?.find((a: any) => a.userId === currentUserId)
+        : t.annotations?.[0];
+
+      return t.status !== "SKIPPED" && myAnnotation?.status !== "SUBMITTED";
+    });
+
     return firstPending >= 0 ? firstPending : 0;
   });
 
@@ -84,15 +90,32 @@ export function ProjectAnnotator({
 
   const currentTask = filteredTasks[currentIndex];
 
+  const currentUserAnnotation =
+    currentTask?.annotations?.find((ann: any) => ann.userId === currentUserId) || null;
+
   const selectedAnnotation =
+    currentUserAnnotation ||
     currentTask?.annotations?.find((ann: any) => ann.id === selectedAnnotationId) ||
-    currentTask?.annotations?.[0];
+    null;
 
   const currentAnnotation = selectedAnnotation;
 
+  const effectiveTaskStatus =
+    currentAnnotation?.status === "SUBMITTED"
+      ? "SUBMITTED"
+      : currentTask?.status === "SKIPPED"
+      ? "SKIPPED"
+      : "PENDING";
+
   const completedAssigned =
     project.progressStats?.completedAssigned ??
-    tasks.filter((task) => task.annotations?.[0]?.status === "SUBMITTED").length;
+    tasks.filter((task) => {
+      const myAnnotation = currentUserId
+        ? task.annotations?.find((a: any) => a.userId === currentUserId)
+        : task.annotations?.[0];
+
+      return myAnnotation?.status === "SUBMITTED";
+    }).length;
 
   const assignedTotal = project.progressStats?.assignedTotal ?? tasks.length;
   const totalTasks = project.progressStats?.totalTasks ?? tasks.length;
@@ -108,8 +131,12 @@ export function ProjectAnnotator({
   }, [currentIndex, filteredTasks.length]);
 
   useEffect(() => {
-    setSelectedAnnotationId(currentTask?.annotations?.[0]?.id ?? null);
-  }, [currentTask?.id]);
+    const myAnnotation =
+      currentTask?.annotations?.find((ann: any) => ann.userId === currentUserId) ||
+      currentTask?.annotations?.[0];
+
+    setSelectedAnnotationId(myAnnotation?.id ?? null);
+  }, [currentTask?.id, currentUserId]);
 
   useEffect(() => {
     setPendingResult(null);
@@ -117,17 +144,17 @@ export function ProjectAnnotator({
     setDraftState("idle");
     setSubmitError("");
 
-    if (selectedAnnotation) {
-      setPendingResult(selectedAnnotation.result as AnnotationResult);
-      setNotes(selectedAnnotation.notes ?? "");
-      setDraftState(selectedAnnotation.status === "DRAFT" ? "saved" : "idle");
+    if (currentAnnotation) {
+      setPendingResult(currentAnnotation.result as AnnotationResult);
+      setNotes(currentAnnotation.notes ?? "");
+      setDraftState(currentAnnotation.status === "DRAFT" ? "saved" : "idle");
     }
 
     loadGuard.current = {
       taskId: currentTask?.id ?? null,
       skipNextAutosave: true,
     };
-  }, [currentTask?.id, selectedAnnotation?.id]);
+  }, [currentTask?.id, currentAnnotation?.id]);
 
   const showToast = (msg: string, type: "success" | "error" = "success") => {
     setToast({ msg, type });
@@ -144,8 +171,11 @@ export function ProjectAnnotator({
 
   const goToFirstUnsolved = useCallback(() => {
     const index = filteredTasks.findIndex((task) => {
-      const annotation = task.annotations?.[0];
-      return task.status !== "SKIPPED" && annotation?.status !== "SUBMITTED";
+      const myAnnotation = currentUserId
+        ? task.annotations?.find((a: any) => a.userId === currentUserId)
+        : task.annotations?.[0];
+
+      return task.status !== "SKIPPED" && myAnnotation?.status !== "SUBMITTED";
     });
 
     if (index >= 0) {
@@ -154,10 +184,10 @@ export function ProjectAnnotator({
     } else {
       showToast("All visible tasks are completed");
     }
-  }, [filteredTasks]);
+  }, [filteredTasks, currentUserId]);
 
   const saveDraft = useCallback(async () => {
-    if (!pendingResult || !currentTask || currentTask.status === "SUBMITTED") return;
+    if (!pendingResult || !currentTask || currentAnnotation?.status === "SUBMITTED") return;
 
     setDraftState("saving");
 
@@ -179,7 +209,15 @@ export function ProjectAnnotator({
 
       setTasks((prev) =>
         prev.map((t) =>
-          t.id === currentTask.id ? { ...t, annotations: [ann] } : t
+          t.id === currentTask.id
+            ? {
+                ...t,
+                annotations: [
+                  ann,
+                  ...(t.annotations || []).filter((a: any) => a.userId !== ann.userId),
+                ],
+              }
+            : t
         )
       );
 
@@ -187,10 +225,10 @@ export function ProjectAnnotator({
     } catch {
       setDraftState("error");
     }
-  }, [pendingResult, currentTask, notes]);
+  }, [pendingResult, currentTask, currentAnnotation?.status, notes]);
 
   useEffect(() => {
-    if (!currentTask || !pendingResult || currentTask.status === "SUBMITTED") return;
+    if (!currentTask || !pendingResult || currentAnnotation?.status === "SUBMITTED") return;
 
     if (loadGuard.current.taskId === currentTask.id && loadGuard.current.skipNextAutosave) {
       loadGuard.current.skipNextAutosave = false;
@@ -202,7 +240,7 @@ export function ProjectAnnotator({
     }, 700);
 
     return () => window.clearTimeout(timer);
-  }, [pendingResult, notes, currentTask?.id, currentTask?.status, saveDraft]);
+  }, [pendingResult, notes, currentTask?.id, currentAnnotation?.status, saveDraft]);
 
   const handleSubmit = useCallback(async () => {
     if (!currentTask) return;
@@ -233,7 +271,15 @@ export function ProjectAnnotator({
 
       setTasks((prev) =>
         prev.map((t) =>
-          t.id === currentTask.id ? { ...t, annotations: [ann] } : t
+          t.id === currentTask.id
+            ? {
+                ...t,
+                annotations: [
+                  ann,
+                  ...(t.annotations || []).filter((a: any) => a.userId !== ann.userId),
+                ],
+              }
+            : t
         )
       );
 
@@ -373,7 +419,7 @@ export function ProjectAnnotator({
 
                     {currentTask.annotations.map((ann: any) => {
                       const name = ann.user?.name || ann.user?.email || "Unknown";
-                      const active = selectedAnnotationId === ann.id;
+                      const active = currentAnnotation?.id === ann.id;
 
                       return (
                         <button
@@ -423,7 +469,7 @@ export function ProjectAnnotator({
                 saving={saving}
                 draftState={draftState}
                 canSubmit={!!pendingResult}
-                taskStatus={currentTask.status}
+                taskStatus={effectiveTaskStatus as any}
                 annotationStatus={currentAnnotation?.status as any}
               />
             </>
